@@ -1,0 +1,807 @@
+# Checklist v2 — Catálogo estructurado maestro
+#
+# Este archivo es consumible por el agente de code review.
+# Contiene el listado completo de controles con su metadata.
+#
+# Campos:
+#   id          — identificador estable del control
+#   title       — título legible
+#   severity    — critical | high | medium | low | info
+#   applies_to  — lista de áreas: backend, frontend, api, infra, data, ai, all, etc.
+#   tags        — etiquetas auxiliares (estándares, CWE, OWASP, etc.)
+#   file        — ruta relativa al archivo markdown que contiene el control
+#   section     — sección dentro del archivo ("A", "B", ...) — orientativo
+#
+# Convención de IDs: <CATEGORIA>-<SUBCAT>-<NNN>, estables, no se renumeran.
+
+version: "2.0.0"
+schema_version: 1
+last_updated: "2026-04-23"
+
+# ---------------------------------------------------------------------------
+categories:
+  - id: security
+    prefix: [SEC]
+    name: Seguridad
+    folder: 01-seguridad
+  - id: api
+    prefix: [API]
+    name: API REST
+    folder: 02-api-diseno
+  - id: code_quality
+    prefix: [CODE]
+    name: Calidad de código
+    folder: 03-calidad-codigo
+  - id: testing
+    prefix: [TEST]
+    name: Testing
+    folder: 04-testing
+  - id: performance
+    prefix: [PERF]
+    name: Rendimiento
+    folder: 05-rendimiento
+  - id: data_privacy
+    prefix: [DATA]
+    name: Protección de datos
+    folder: 06-proteccion-datos
+  - id: ai_llm
+    prefix: [LLM]
+    name: IA / LLM
+    folder: 07-ia-llm
+  - id: usability
+    prefix: [UX]
+    name: Usabilidad
+    folder: 08-usabilidad-ux
+  - id: accessibility
+    prefix: [A11Y]
+    name: Accesibilidad
+    folder: 09-accesibilidad
+  - id: observability
+    prefix: [OBS]
+    name: Observabilidad
+    folder: 10-observabilidad
+  - id: cicd_devops
+    prefix: [CICD]
+    name: CI/CD y DevOps
+    folder: 11-cicd-devops
+  - id: architecture
+    prefix: [ARCH]
+    name: Arquitectura
+    folder: 12-arquitectura
+  - id: database
+    prefix: [DB]
+    name: Base de datos
+    folder: 13-base-datos
+  - id: documentation
+    prefix: [DOC]
+    name: Documentación
+    folder: 14-documentacion
+
+# ---------------------------------------------------------------------------
+severities:
+  critical:
+    description: "Riesgo de brecha, pérdida de datos o vulnerabilidad explotable. Bloquea merge."
+    agent_action: block_merge
+  high:
+    description: "Bug funcional serio o riesgo importante. Exige cambios antes de merge."
+    agent_action: request_changes
+  medium:
+    description: "Mejora importante sin riesgo inmediato. Comentario fuerte."
+    agent_action: comment_strong
+  low:
+    description: "Mejora de estilo o consistencia."
+    agent_action: comment_nit
+  info:
+    description: "Buenas prácticas, no obligatorio."
+    agent_action: comment_info
+
+# ---------------------------------------------------------------------------
+controls:
+
+  # ========================================================================
+  # 01. SEGURIDAD · Autenticación
+  # ========================================================================
+  - { id: SEC-AUTH-001, title: "Hash de contraseñas con algoritmo moderno",               severity: critical, applies_to: [backend],             tags: [owasp-a07, cwe-256],          file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-002, title: "Secretos nunca hardcodeados en código fuente",             severity: critical, applies_to: [all],                 tags: [cwe-798, supply-chain],       file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-003, title: "Validación defensiva de secretos al arrancar",             severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-010, title: "JWT firmado con algoritmo y clave robustos",               severity: critical, applies_to: [backend],             tags: [owasp-a02, cwe-347],          file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-011, title: "Expiración razonable y rotación de refresh tokens",        severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-012, title: "Almacenamiento seguro de tokens en el cliente",            severity: high,     applies_to: [frontend],            tags: [owasp-a07],                   file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-013, title: "Invalidación de sesión en eventos sensibles",              severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-014, title: "Cookies con flags de seguridad",                           severity: high,     applies_to: [backend, frontend],   tags: [],                            file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-020, title: "MFA disponible (y obligatorio para privilegiados)",        severity: high,     applies_to: [backend],             tags: [owasp-a07],                   file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-021, title: "Códigos de recuperación manejados con cuidado",            severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-030, title: "Rate limiting y lockout progresivo en login",              severity: critical, applies_to: [backend],             tags: [cwe-307, owasp-api4],         file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-031, title: "Mensajes de error genéricos en autenticación",             severity: medium,   applies_to: [backend],             tags: [cwe-203],                     file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-032, title: "Comparación de credenciales en tiempo constante",          severity: high,     applies_to: [backend],             tags: [cwe-208, timing-attack],      file: 01-seguridad/01-autenticacion.md }
+  - { id: SEC-AUTH-040, title: "Log de auditoría de eventos de autenticación",             severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/01-autenticacion.md }
+
+  # ---- Autorización ------------------------------------------------------
+  - { id: SEC-AUTHZ-001, title: "Cada endpoint exige autenticación por defecto",           severity: critical, applies_to: [backend],             tags: [owasp-api5, cwe-306],         file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-002, title: "Autorización evaluada en cada request (no frontend)",     severity: critical, applies_to: [backend, frontend],   tags: [owasp-a01, cwe-602],          file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-010, title: "Recursos filtrados por dueño (anti-IDOR)",                severity: critical, applies_to: [backend],             tags: [owasp-api1, cwe-639, idor],   file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-011, title: "IDs de recursos no-enumerables",                          severity: medium,   applies_to: [backend],             tags: [enumeration],                 file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-020, title: "Permisos centralizados y reutilizables",                  severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-021, title: "Principio de mínimo privilegio",                          severity: high,     applies_to: [backend],             tags: [least-privilege],             file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-022, title: "Verificación a nivel de campo (anti-BOPLA)",              severity: high,     applies_to: [backend],             tags: [owasp-api3, bopla],           file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-030, title: "Endpoints administrativos segregados",                    severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-031, title: "Métodos HTTP restringidos",                               severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-040, title: "CORS estricto",                                           severity: high,     applies_to: [backend],             tags: [cwe-942],                     file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-050, title: "Revocación inmediata de permisos",                        severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/02-autorizacion.md }
+  - { id: SEC-AUTHZ-051, title: "Auditoría de operaciones privilegiadas",                  severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/02-autorizacion.md }
+
+  # ---- Validación de entrada --------------------------------------------
+  - { id: SEC-INPUT-001, title: "Todo input externo contra schema",                        severity: critical, applies_to: [backend, api],        tags: [owasp-a04, cwe-20],           file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-002, title: "Validación de tipos semánticos",                          severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-003, title: "Límites de tamaño en entrada",                            severity: high,     applies_to: [backend, api],        tags: [dos, cwe-400],                file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-010, title: "Queries parametrizadas",                                  severity: critical, applies_to: [backend],             tags: [owasp-a03, cwe-89],           file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-011, title: "Metadatos de query nunca del cliente",                    severity: high,     applies_to: [backend],             tags: [cwe-89],                      file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-012, title: "Búsqueda full-text sanitizada",                           severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-013, title: "Anti-inyección NoSQL/LDAP/XPath",                         severity: high,     applies_to: [backend],             tags: [cwe-90, cwe-91, cwe-943],     file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-020, title: "Cero shell con input del usuario",                        severity: critical, applies_to: [backend],             tags: [owasp-a03, cwe-78],           file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-021, title: "No eval/exec sobre input del usuario",                    severity: critical, applies_to: [backend, frontend],   tags: [cwe-94],                      file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-030, title: "Rutas de archivo validadas contra path traversal",        severity: critical, applies_to: [backend],             tags: [cwe-22, cwe-73],              file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-031, title: "Protección SSRF",                                         severity: critical, applies_to: [backend],             tags: [cwe-918, owasp-a10],          file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-040, title: "Salida HTML escapada por defecto",                        severity: critical, applies_to: [frontend, backend],   tags: [owasp-a03, cwe-79],           file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-041, title: "CSP efectivo",                                            severity: high,     applies_to: [frontend, backend],   tags: [csp],                         file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-050, title: "Deserialización segura",                                  severity: critical, applies_to: [backend],             tags: [owasp-a08, cwe-502],          file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-060, title: "Protección contra caracteres de control y unicode",       severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 01-seguridad/03-validacion-entrada.md }
+  - { id: SEC-INPUT-061, title: "Protección contra ReDoS",                                 severity: high,     applies_to: [backend, frontend],   tags: [cwe-1333, redos],             file: 01-seguridad/03-validacion-entrada.md }
+
+  # ---- Secretos y criptografía ------------------------------------------
+  - { id: SEC-CRYPTO-001, title: "Secretos gestionados por vault/secret manager",          severity: critical, applies_to: [infra, backend],      tags: [cwe-798],                     file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-002, title: "Rotación periódica y por compromiso",                    severity: high,     applies_to: [infra, backend],      tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-003, title: "Acceso a secretos por mínimo privilegio",                severity: high,     applies_to: [infra],               tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-010, title: "Escaneo automático de secretos en repo",                 severity: high,     applies_to: [ci-cd],               tags: [supply-chain],                file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-011, title: "Secretos redactados en logs y errores",                  severity: critical, applies_to: [backend, frontend],   tags: [cwe-532, cwe-209],            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-020, title: "Solo algoritmos criptográficos modernos",                severity: critical, applies_to: [all],                 tags: [owasp-a02, cwe-327],          file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-021, title: "Modos de cifrado con autenticación (AEAD)",              severity: critical, applies_to: [backend],             tags: [cwe-327],                     file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-022, title: "IV/nonce aleatorio y único por operación",               severity: critical, applies_to: [backend],             tags: [cwe-329, cwe-330],            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-023, title: "Generación de aleatorios criptográficos",                severity: high,     applies_to: [backend, frontend],   tags: [cwe-338, cwe-330],            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-024, title: "Derivación de claves con KDF apropiado",                 severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-030, title: "TLS obligatorio y moderno en producción",                severity: critical, applies_to: [infra, backend],      tags: [owasp-a02],                   file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-031, title: "Datos sensibles cifrados en reposo",                     severity: high,     applies_to: [data, infra],         tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-032, title: "No se almacenan datos que no deberían guardarse",        severity: critical, applies_to: [data],                tags: [pci-dss],                     file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-040, title: "Verificación de firma antes de procesar",                severity: critical, applies_to: [backend],             tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+  - { id: SEC-CRYPTO-041, title: "Pinning/validación de certs en salida",                  severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/04-secretos-criptografia.md }
+
+  # ---- Headers HTTP y rate limiting -------------------------------------
+  - { id: SEC-HEADERS-001, title: "HSTS forzando HTTPS",                                   severity: high,     applies_to: [backend, infra],      tags: [owasp-a02, hsts],             file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-002, title: "X-Content-Type-Options nosniff",                        severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-003, title: "Protección contra clickjacking",                        severity: high,     applies_to: [backend, frontend],   tags: [cwe-1021],                    file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-004, title: "Referrer-Policy restrictivo",                           severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-005, title: "Permissions-Policy limitando APIs del navegador",       severity: medium,   applies_to: [frontend, backend],   tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-006, title: "COOP/COEP/CORP para aislamiento",                       severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-007, title: "Eliminar headers informativos (Server, X-Powered-By)",  severity: low,      applies_to: [backend, infra],      tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-010, title: "CSP restrictivo con nonces o hashes",                   severity: high,     applies_to: [frontend, backend],   tags: [csp],                         file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-011, title: "CSP sin bypasses conocidos",                            severity: high,     applies_to: [frontend, backend],   tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-020, title: "Atributos seguros en todas las cookies",                severity: high,     applies_to: [backend],             tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-030, title: "Rate limiting global y por endpoint",                   severity: critical, applies_to: [backend],             tags: [owasp-api4, cwe-770],         file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-031, title: "Headers informativos de rate limit",                    severity: medium,   applies_to: [backend, api],        tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-040, title: "Límites de tamaño y profundidad de request",            severity: high,     applies_to: [backend],             tags: [cwe-400, cwe-1321],           file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-041, title: "Timeouts en operaciones externas",                      severity: critical, applies_to: [backend],             tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-042, title: "Pool de conexiones acotado",                            severity: medium,   applies_to: [backend],             tags: [],                            file: 01-seguridad/05-headers-http.md }
+  - { id: SEC-HEADERS-043, title: "Paginación obligatoria en listados",                    severity: high,     applies_to: [api, backend],        tags: [],                            file: 01-seguridad/05-headers-http.md }
+
+  # ---- Dependencias ------------------------------------------------------
+  - { id: SEC-DEPS-001, title: "Dependencias fijadas y reproducibles",                     severity: high,     applies_to: [backend, frontend],   tags: [supply-chain],                file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-002, title: "Verificación de integridad en instalación",                severity: high,     applies_to: [backend, frontend],   tags: [supply-chain],                file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-003, title: "Política de actualización documentada",                    severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-004, title: "Escaneo automático de vulnerabilidades",                   severity: critical, applies_to: [ci-cd],               tags: [cwe-1035],                    file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-005, title: "Dependencias mínimas y de proveedores confiables",         severity: medium,   applies_to: [backend, frontend],   tags: [supply-chain],                file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-010, title: "Generación de SBOM en el build",                           severity: medium,   applies_to: [ci-cd],               tags: [slsa, sbom],                  file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-011, title: "Firma de artefactos y releases",                           severity: medium,   applies_to: [ci-cd, infra],        tags: [slsa, sigstore],              file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-020, title: "Control de dependencias transitivas",                      severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-021, title: "Prevención de dependency confusion",                       severity: high,     applies_to: [backend, frontend],   tags: [supply-chain, typosquatting], file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-030, title: "Imágenes base minimales y versionadas",                    severity: high,     applies_to: [infra],               tags: [],                            file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-031, title: "Contenedor no corre como root",                            severity: high,     applies_to: [infra],               tags: [cis-docker],                  file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-032, title: "Escaneo de imágenes en el pipeline",                       severity: high,     applies_to: [ci-cd],               tags: [],                            file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-033, title: "Secretos nunca en la imagen",                              severity: critical, applies_to: [infra],               tags: [],                            file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-040, title: "Scripts externos con SRI",                                 severity: medium,   applies_to: [frontend],            tags: [sri],                         file: 01-seguridad/06-dependencias.md }
+  - { id: SEC-DEPS-041, title: "Tag managers y SDKs de terceros revisados",                severity: medium,   applies_to: [frontend],            tags: [],                            file: 01-seguridad/06-dependencias.md }
+
+  # ---- Manejo de archivos -----------------------------------------------
+  - { id: SEC-FILE-001, title: "Tamaño máximo verificado antes de memoria",                severity: high,     applies_to: [backend],             tags: [dos, cwe-400],                file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-002, title: "Tipo de archivo validado por contenido",                   severity: high,     applies_to: [backend],             tags: [cwe-434],                     file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-003, title: "Nombre de archivo server-side",                            severity: high,     applies_to: [backend],             tags: [cwe-22, cwe-434],             file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-004, title: "Archivos almacenados fuera de la raíz web",                severity: critical, applies_to: [backend, infra],      tags: [cwe-434],                     file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-005, title: "Escaneo antimalware de uploads",                           severity: high,     applies_to: [backend, infra],      tags: [],                            file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-006, title: "Imágenes re-encodificadas antes de servir",                severity: medium,   applies_to: [backend],             tags: [cwe-434, cwe-79],             file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-007, title: "Límite de archivos por usuario (cuotas)",                  severity: medium,   applies_to: [backend],             tags: [dos, quota],                  file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-010, title: "Autorización en cada descarga",                            severity: critical, applies_to: [backend],             tags: [owasp-a01, idor],             file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-011, title: "Content-Disposition y Content-Type correctos",             severity: high,     applies_to: [backend],             tags: [cwe-79],                      file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-012, title: "Streaming en descargas grandes",                           severity: medium,   applies_to: [backend],             tags: [performance],                 file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-020, title: "Path resolution segura",                                   severity: critical, applies_to: [backend],             tags: [cwe-22, cwe-73],              file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-021, title: "Temporales con nombres impredecibles y limpios",           severity: medium,   applies_to: [backend],             tags: [cwe-377],                     file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-030, title: "Procesamiento en sandbox",                                 severity: high,     applies_to: [backend, infra],      tags: [],                            file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-031, title: "XXE prevenido en parseo XML/Office",                       severity: critical, applies_to: [backend],             tags: [cwe-611],                     file: 01-seguridad/07-manejo-archivos.md }
+  - { id: SEC-FILE-032, title: "Zip bomb / zip slip protection",                           severity: high,     applies_to: [backend],             tags: [cwe-409, dos],                file: 01-seguridad/07-manejo-archivos.md }
+
+  # ========================================================================
+  # 02. API · Diseño REST
+  # ========================================================================
+  - { id: API-REST-001, title: "Recursos como sustantivos plurales",                       severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-002, title: "Nomenclatura consistente",                                 severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-003, title: "Anidamiento limitado (≤ 2 niveles)",                       severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-004, title: "IDs opacos y no-enumerables en URLs",                      severity: medium,   applies_to: [api],                 tags: [security, idor],              file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-005, title: "Trailing slash consistente",                               severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-010, title: "Método HTTP correcto según semántica",                    severity: high,     applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-011, title: "Idempotencia garantizada en verbos idempotentes",          severity: high,     applies_to: [backend, api],        tags: [idempotency],                 file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-012, title: "Safety: GET/HEAD/OPTIONS sin side effects",                severity: critical, applies_to: [backend, api],        tags: [cwe-352],                     file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-020, title: "Códigos 2xx correctos",                                    severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-021, title: "Códigos 4xx específicos",                                  severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-022, title: "5xx no expone internals",                                  severity: critical, applies_to: [backend, api],        tags: [cwe-209],                     file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-023, title: "Consistencia de códigos entre endpoints",                  severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-030, title: "Content-Type correcto",                                    severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-031, title: "Accept header respetado",                                  severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-040, title: "Métodos no soportados retornan 405 con Allow",             severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+  - { id: API-REST-041, title: "No hay endpoints de debug/dev en producción",              severity: critical, applies_to: [backend],             tags: [],                            file: 02-api-diseno/01-recursos-metodos.md }
+
+  # ---- Requests/responses ------------------------------------------------
+  - { id: API-REQ-001, title: "JSON como formato por defecto",                             severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-REQ-002, title: "Convención consistente de naming en campos",                severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-REQ-003, title: "Tipos y formatos estables en campos comunes",               severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-REQ-004, title: "Campos opcionales: omitir vs null documentado",             severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-REQ-005, title: "Query parameters con convenciones claras",                  severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-001, title: "Estructura de respuesta predecible",                        severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-002, title: "Campos sensibles excluidos de la respuesta",                severity: critical, applies_to: [api],                 tags: [cwe-200, owasp-a02],          file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-003, title: "Campos calculados documentados",                            severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-ERR-001, title: "Estructura de error uniforme (Problem Details)",            severity: high,     applies_to: [api],                 tags: [rfc-7807],                    file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-ERR-002, title: "Errores de validación con campo y razón",                   severity: high,     applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-ERR-003, title: "No filtrar detalle interno en errores",                     severity: critical, applies_to: [backend, api],        tags: [cwe-209],                     file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-ERR-004, title: "No filtrar info en 401/403/429",                            severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-010, title: "Headers operacionales estándar",                            severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-011, title: "Location en 201",                                           severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-012, title: "Respuestas vacías correctas",                               severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-020, title: "Cache-Control explícito",                                   severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+  - { id: API-RES-021, title: "ETag y revalidación condicional",                           severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/02-requests-responses.md }
+
+  # ---- Paginación, filtros, búsqueda -------------------------------------
+  - { id: API-PAGE-001, title: "Paginación obligatoria en todos los listados",             severity: high,     applies_to: [api, backend],        tags: [performance, dos],            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-PAGE-002, title: "Metadata de paginación completa",                          severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-PAGE-003, title: "Cursor-based para colecciones grandes",                    severity: medium,   applies_to: [api, backend],        tags: [performance],                 file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-PAGE-004, title: "Deep pagination limitada",                                 severity: medium,   applies_to: [api, backend],        tags: [performance, dos],            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-FILTER-001, title: "Filtros declarativos y documentados",                    severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-FILTER-002, title: "Filtros aplicados en BD, no en memoria",                 severity: high,     applies_to: [backend],             tags: [performance, cwe-400],        file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-FILTER-003, title: "Filtros por campos sensibles protegidos",                severity: high,     applies_to: [backend],             tags: [owasp-api1, idor],            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-SORT-001, title: "Ordenamiento con allowlist e índices",                     severity: high,     applies_to: [backend],             tags: [cwe-89, performance],         file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-SORT-002, title: "Orden multi-campo con sintaxis clara",                     severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-SEARCH-001, title: "Búsqueda textual con sanitización",                      severity: medium,   applies_to: [backend],             tags: [cwe-89, redos],               file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-SEARCH-002, title: "Índices apropiados para búsqueda",                       severity: medium,   applies_to: [backend],             tags: [performance],                 file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-INC-001, title: "Expansión de relaciones explícita (include)",               severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-PROJ-001, title: "Proyección de campos (fields)",                            severity: low,      applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+  - { id: API-LIST-001, title: "Estructura de listado uniforme",                           severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/03-paginacion-filtros.md }
+
+  # ---- Versionado, contratos ---------------------------------------------
+  - { id: API-VER-001, title: "Versión explícita y estable",                               severity: high,     applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-VER-002, title: "Breaking changes identificados y documentados",             severity: high,     applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-VER-003, title: "Convivencia de versiones acotada",                          severity: medium,   applies_to: [backend],             tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-VER-004, title: "Deprecation visible al cliente",                            severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-VER-005, title: "Cliente y servidor tolerantes a campos desconocidos",       severity: medium,   applies_to: [api, backend, frontend], tags: [postel],                    file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-DOC-001, title: "OpenAPI como fuente de verdad",                             severity: high,     applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-DOC-002, title: "Ejemplos reales en el contrato",                            severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-DOC-003, title: "Portal de documentación publicado",                         severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-DOC-004, title: "Autenticación documentada en OpenAPI",                      severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-CONTRACT-001, title: "Tests de contrato en CI",                              severity: high,     applies_to: [api, ci-cd],          tags: [testing],                     file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-CONTRACT-002, title: "Consumer-driven contract tests",                       severity: medium,   applies_to: [backend, frontend],   tags: [pact],                        file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-CONTRACT-003, title: "SDK/cliente generado mantenido",                       severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/04-versionado-contratos.md }
+  - { id: API-VER-010, title: "Request-Id / Trace en cada respuesta",                      severity: medium,   applies_to: [api],                 tags: [observability],               file: 02-api-diseno/04-versionado-contratos.md }
+
+  # ---- Idempotencia, async, webhooks ------------------------------------
+  - { id: API-IDEM-001, title: "Idempotency-Key en operaciones críticas",                  severity: high,     applies_to: [api, backend],        tags: [idempotency],                 file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-IDEM-002, title: "Reintentos seguros en clientes",                           severity: medium,   applies_to: [frontend, backend],   tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-IDEM-003, title: "ETag / If-Match para updates",                             severity: high,     applies_to: [api, backend],        tags: [rfc-7232],                    file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-IDEM-004, title: "Locking pesimista solo cuando sea necesario",              severity: medium,   applies_to: [backend],             tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-BATCH-001, title: "Batch con límite y resultado granular",                   severity: high,     applies_to: [api, backend],        tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-BATCH-002, title: "Idempotencia en batch",                                   severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-ASYNC-001, title: "Patrón LRO uniforme (202 + task status)",                 severity: high,     applies_to: [api, backend],        tags: [long-running],                file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-ASYNC-002, title: "Polling/webhook/streaming apropiado",                     severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-ASYNC-003, title: "Idempotencia de LRO",                                     severity: medium,   applies_to: [api, backend],        tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-HOOK-001, title: "Firma de webhook verificable",                             severity: critical, applies_to: [backend],             tags: [security, integrity],         file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-HOOK-002, title: "Reintentos y DLQ en envío de webhooks",                    severity: high,     applies_to: [backend],             tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-HOOK-003, title: "At-least-once + event_id único",                           severity: high,     applies_to: [api, backend],        tags: [idempotency],                 file: 02-api-diseno/05-idempotencia-async.md }
+  - { id: API-STREAM-001, title: "SSE/streaming con heartbeat y reconnection",             severity: medium,   applies_to: [api],                 tags: [],                            file: 02-api-diseno/05-idempotencia-async.md }
+
+  # ========================================================================
+  # 03. CALIDAD DE CÓDIGO
+  # ========================================================================
+  - { id: CODE-STYLE-001, title: "Formatter/linter automático en el pipeline",             severity: high,     applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-STYLE-002, title: "Indentación, ancho y trailing commas consistentes",      severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-STYLE-003, title: "Imports ordenados y sin basura",                         severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-STYLE-004, title: "No código muerto ni TODOs huérfanos",                    severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-NAME-001, title: "Nombres descriptivos sin abreviaciones crípticas",        severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-NAME-002, title: "Convenciones del lenguaje respetadas",                    severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-NAME-003, title: "Nombres consistentes en toda la base",                    severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-NAME-004, title: "Prefijos y sufijos uniformes",                            severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-DOC-001, title: "Docstrings en API pública",                                severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-DOC-002, title: "Comentarios explican por qué, no qué",                     severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-DOC-003, title: "Referencias a estándares o tickets",                       severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-TYPE-001, title: "Type hints/tipos en API pública",                         severity: high,     applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+  - { id: CODE-TYPE-002, title: "Tipos explícitos para valores del dominio",               severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/01-estilo-naming.md }
+
+  - { id: CODE-FN-001, title: "Funciones cortas y enfocadas",                              severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-FN-002, title: "Parámetros limitados",                                      severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-FN-003, title: "Sin flag arguments",                                        severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-FN-004, title: "Complejidad ciclomática ≤ 10",                              severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-FN-005, title: "Funciones puras cuando sea posible",                        severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-FN-006, title: "Sin mutación de parámetros sin documentar",                 severity: medium,   applies_to: [all],                 tags: [bug-risk],                    file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-ERR-001, title: "Excepciones específicas, no catch-all",                    severity: high,     applies_to: [all],                 tags: [reliability],                 file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-ERR-002, title: "Stack traces preservados al re-lanzar",                    severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-ERR-003, title: "Excepciones custom con jerarquía clara",                   severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-ERR-004, title: "Errores en borde, no en cada capa",                        severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-ERR-005, title: "Recursos liberados aunque haya excepción",                 severity: high,     applies_to: [all],                 tags: [resource-leak, cwe-404],      file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-SOLID-001, title: "Single Responsibility",                                  severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-SOLID-002, title: "Open/Closed",                                            severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-SOLID-003, title: "Liskov Substitution",                                    severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-SOLID-004, title: "Interface Segregation",                                  severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-SOLID-005, title: "Dependency Inversion",                                   severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-DRY-001, title: "Duplicación significativa extraída",                       severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-YAGNI-001, title: "Sin sobre-ingeniería",                                   severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-STRUCT-001, title: "Capas separadas con dependencias unidireccionales",     severity: high,     applies_to: [backend],             tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+  - { id: CODE-STRUCT-002, title: "Co-locación razonable",                                 severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/02-funciones-solid.md }
+
+  - { id: CODE-ASYNC-001, title: "I/O siempre async en runtimes async",                    severity: high,     applies_to: [backend, frontend],   tags: [performance],                 file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-ASYNC-002, title: "Paralelismo controlado con límite",                      severity: medium,   applies_to: [backend],             tags: [backpressure],                file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-ASYNC-003, title: "Structured concurrency: tareas cancelables",             severity: medium,   applies_to: [backend],             tags: [reliability],                 file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-ASYNC-004, title: "Timeouts en todo I/O",                                   severity: critical, applies_to: [backend],             tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-ASYNC-005, title: "Cancelación manejada correctamente",                     severity: medium,   applies_to: [backend],             tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-STATE-001, title: "Estado global minimizado",                               severity: high,     applies_to: [all],                 tags: [bug-risk, testing],           file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-STATE-002, title: "Datos inmutables preferidos",                            severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-STATE-003, title: "Thread-safety documentada",                              severity: medium,   applies_to: [backend],             tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-EFFECT-001, title: "Separación entre cálculo y efecto",                     severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-EFFECT-002, title: "Idempotencia en operaciones re-ejecutables",            severity: high,     applies_to: [backend],             tags: [reliability],                 file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-EFFECT-003, title: "Tiempo y aleatoriedad inyectados",                      severity: low,      applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-OBS-001, title: "No usar print/console.log en producción",                  severity: high,     applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-OBS-002, title: "Niveles de log apropiados",                                severity: medium,   applies_to: [all],                 tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+  - { id: CODE-OBS-003, title: "Contexto estructurado en logs",                            severity: medium,   applies_to: [backend],             tags: [],                            file: 03-calidad-codigo/03-concurrencia-estado.md }
+
+  # ========================================================================
+  # 04. TESTING
+  # ========================================================================
+  - { id: TEST-STRAT-001, title: "Mezcla balanceada unit/integración/E2E",                 severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-STRAT-002, title: "Cobertura como métrica, no objetivo",                    severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-STRAT-003, title: "Tests en pipeline bloqueante",                           severity: critical, applies_to: [ci-cd],               tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-FIRST-001, title: "Fast: tests rápidos",                                    severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-FIRST-002, title: "Independent: orden y aislamiento",                       severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-FIRST-003, title: "Repeatable: deterministas",                              severity: high,     applies_to: [testing],             tags: [flaky-tests],                 file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-FIRST-004, title: "Self-validating con asserts explícitos",                 severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-FIRST-005, title: "Timely: tests escritos junto al código",                 severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-AAA-001, title: "Arrange-Act-Assert claro",                                 severity: low,      applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-AAA-002, title: "Un comportamiento por test",                               severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-AAA-003, title: "Nombres descriptivos",                                     severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-CASE-001, title: "Happy path, bordes, errores cubiertos",                   severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-CASE-002, title: "Regresión: bug viene con test",                           severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-CASE-003, title: "Matriz de autorización cubierta",                         severity: high,     applies_to: [backend, testing],    tags: [security-testing],            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-COV-001, title: "Herramienta de cobertura activa",                          severity: medium,   applies_to: [ci-cd],               tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+  - { id: TEST-COV-002, title: "Cobertura por área de riesgo",                             severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/01-estrategia-cobertura.md }
+
+  - { id: TEST-UNIT-001, title: "Unidad clara y aislada",                                  severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-UNIT-002, title: "Tests de funciones puras sin mocks",                      severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-UNIT-003, title: "Tests de lógica de errores",                              severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-INT-001, title: "Integración con dependencias reales",                      severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-INT-002, title: "Aislamiento entre tests de integración",                   severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-INT-003, title: "Tests de endpoint cubriendo contratos",                    severity: high,     applies_to: [testing, backend],    tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-INT-004, title: "Tests de BD validan queries reales",                       severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-FIX-001, title: "Fixtures reutilizables",                                   severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-FIX-002, title: "Factories con defaults razonables",                        severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-FIX-003, title: "Test data files mínimos y versionados",                    severity: low,      applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-MOCK-001, title: "Mockear en el borde, no la librería",                     severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-MOCK-002, title: "Uso adecuado de mocks/fakes/spies",                       severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-MOCK-003, title: "Mocks HTTP con librería dedicada",                        severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-MOCK-004, title: "Reloj/UUID/aleatorios controlables",                      severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-STRUCT-001, title: "Organización espejo del código",                        severity: low,      applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+  - { id: TEST-STRUCT-002, title: "Helpers compartidos entre tests",                       severity: low,      applies_to: [testing],             tags: [],                            file: 04-testing/02-unitarios-integracion.md }
+
+  - { id: TEST-E2E-001, title: "Cobertura de flujos críticos del usuario",                 severity: high,     applies_to: [testing, frontend, backend], tags: [],                       file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-E2E-002, title: "Selectores estables (data-testid)",                        severity: medium,   applies_to: [testing, frontend],   tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-E2E-003, title: "Datos de test aislados y reproducibles",                   severity: high,     applies_to: [testing],             tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-E2E-004, title: "Manejo de flakiness",                                      severity: high,     applies_to: [testing],             tags: [reliability],                 file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-E2E-005, title: "Idempotencia de la suite",                                 severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-CONTRACT-001, title: "Validación continua del contrato",                    severity: high,     applies_to: [testing, api],        tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-CONTRACT-002, title: "Consumer-driven contract tests",                      severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-PROP-001, title: "Property-based testing",                                  severity: medium,   applies_to: [testing],             tags: [property-testing],            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-FUZZ-001, title: "Fuzz testing en parseo",                                  severity: medium,   applies_to: [backend],             tags: [security-testing],            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-PERF-001, title: "Benchmarks para rutas críticas",                          severity: medium,   applies_to: [testing, backend],    tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-LOAD-001, title: "Tests de carga programados",                              severity: medium,   applies_to: [testing],             tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-MUT-001, title: "Mutation testing en críticos",                             severity: low,      applies_to: [testing],             tags: [test-quality],                file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-SEC-001, title: "DAST/SAST en pipeline",                                    severity: high,     applies_to: [ci-cd],               tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-SEC-002, title: "Tests para reglas específicas de seguridad",               severity: high,     applies_to: [testing, backend],    tags: [],                            file: 04-testing/03-e2e-contract.md }
+  - { id: TEST-A11Y-001, title: "Scanners automáticos de a11y en CI",                      severity: medium,   applies_to: [testing, frontend],   tags: [],                            file: 04-testing/03-e2e-contract.md }
+
+  # ========================================================================
+  # 05. RENDIMIENTO
+  # ========================================================================
+  - { id: PERF-FE-001, title: "LCP < 2.5s",                                                severity: high,     applies_to: [frontend],            tags: [core-web-vitals],             file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-002, title: "INP < 200ms",                                               severity: high,     applies_to: [frontend],            tags: [core-web-vitals],             file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-003, title: "CLS < 0.1",                                                 severity: high,     applies_to: [frontend],            tags: [core-web-vitals],             file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-010, title: "Code splitting por ruta y feature",                         severity: high,     applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-011, title: "Tree-shaking y dead code elimination",                      severity: medium,   applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-012, title: "Imágenes optimizadas y responsivas",                        severity: high,     applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-013, title: "Fuentes optimizadas",                                       severity: medium,   applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-014, title: "Cache HTTP de assets inmutables",                           severity: high,     applies_to: [infra, frontend],     tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-020, title: "Evitar re-renders costosos",                                severity: medium,   applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-021, title: "Estado del servidor con caché apropiado",                   severity: high,     applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-022, title: "Animaciones suaves (60 fps)",                               severity: low,      applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-030, title: "HTTP/2+ y requests concurrentes",                           severity: medium,   applies_to: [frontend, infra],     tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-031, title: "Prefetch/preload prudente",                                 severity: low,      applies_to: [frontend],            tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-040, title: "RUM en producción",                                         severity: high,     applies_to: [frontend, infra],     tags: [],                            file: 05-rendimiento/01-frontend.md }
+  - { id: PERF-FE-041, title: "Budget de performance en CI",                               severity: medium,   applies_to: [ci-cd],               tags: [],                            file: 05-rendimiento/01-frontend.md }
+
+  - { id: PERF-BE-001, title: "I/O async en camino crítico",                               severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-002, title: "Paralelismo limitado donde aporta",                         severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-003, title: "Timeouts y backpressure",                                   severity: critical, applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-004, title: "Streaming en responses grandes",                            severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-010, title: "Pools dimensionados y compartidos",                         severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-011, title: "Keep-alive y reutilización",                                severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-020, title: "Caché en capas (memoria, remoto, HTTP)",                    severity: medium,   applies_to: [backend, infra],      tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-021, title: "Invalidación de caché correcta",                            severity: high,     applies_to: [backend],             tags: [bug-risk],                    file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-022, title: "Cache stampede evitado",                                    severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-030, title: "Trabajo pesado delegado a workers",                         severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-031, title: "Cron/scheduled jobs idempotentes",                          severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-040, title: "Memoria monitoreada y acotada",                             severity: high,     applies_to: [backend, infra],      tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-041, title: "Colecciones y buffers con límites",                         severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-050, title: "Problemas N+1 detectados",                                  severity: high,     applies_to: [backend],             tags: [n+1],                         file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-051, title: "Listados paginados y con índice",                           severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-060, title: "Latencias p50/p95/p99 medidas",                             severity: high,     applies_to: [backend, observability], tags: [],                         file: 05-rendimiento/02-backend.md }
+  - { id: PERF-BE-061, title: "Tracing distribuido para cuellos",                          severity: medium,   applies_to: [backend, observability], tags: [],                         file: 05-rendimiento/02-backend.md }
+
+  - { id: PERF-DB-001, title: "EXPLAIN analizado en críticos",                             severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-002, title: "SELECT solo campos necesarios",                             severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-003, title: "N+1 detectado y eliminado",                                 severity: high,     applies_to: [backend],             tags: [n+1],                         file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-004, title: "Batching de operaciones",                                   severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-010, title: "Índices sobre columnas de filtro/orden",                    severity: high,     applies_to: [backend, data],       tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-011, title: "Índices no redundantes ni excesivos",                       severity: medium,   applies_to: [data],                tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-020, title: "Transacciones cortas",                                      severity: high,     applies_to: [backend],             tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-021, title: "Niveles de aislamiento apropiados",                         severity: medium,   applies_to: [backend],             tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-022, title: "Deadlocks monitoreados",                                    severity: medium,   applies_to: [data],                tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-DB-030, title: "Counters y hot rows con técnicas específicas",              severity: medium,   applies_to: [data],                tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-NET-001, title: "Compresión en respuestas",                                 severity: medium,   applies_to: [infra, backend],      tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-NET-002, title: "CDN para assets y contenido cacheable",                    severity: high,     applies_to: [infra],               tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+  - { id: PERF-NET-003, title: "Edge computing para latencia crítica",                     severity: low,      applies_to: [infra],               tags: [],                            file: 05-rendimiento/03-base-datos-red.md }
+
+  # ========================================================================
+  # 06. PROTECCIÓN DE DATOS
+  # ========================================================================
+  - { id: DATA-INV-001, title: "Inventario de datos personales documentado",               severity: high,     applies_to: [data, backend],       tags: [gdpr-art-30],                 file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-INV-002, title: "Clasificación por sensibilidad",                           severity: high,     applies_to: [data],                tags: [],                            file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-INV-003, title: "Flujos de datos mapeados",                                 severity: medium,   applies_to: [data],                tags: [],                            file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-INV-004, title: "Minimización en recolección",                              severity: high,     applies_to: [backend, frontend],   tags: [gdpr-art-5],                  file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-LEGAL-001, title: "Base legal documentada por cada tratamiento",            severity: critical, applies_to: [legal, data],         tags: [gdpr-art-6],                  file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-LEGAL-002, title: "Consentimiento granular, informado, revocable",          severity: critical, applies_to: [frontend, backend],   tags: [gdpr-art-7],                  file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-LEGAL-003, title: "Consentimiento específico para IA/LLM",                  severity: high,     applies_to: [backend, frontend],   tags: [],                            file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-LEGAL-004, title: "Consentimiento parental cuando aplique",                 severity: critical, applies_to: [backend, frontend],   tags: [coppa, gdpr-art-8],           file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-TRANS-001, title: "Política de privacidad completa y accesible",            severity: high,     applies_to: [frontend, legal],     tags: [gdpr-art-13, gdpr-art-14],    file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-TRANS-002, title: "Aviso en el momento de la recolección",                  severity: medium,   applies_to: [frontend],            tags: [],                            file: 06-proteccion-datos/01-inventario-base-legal.md }
+  - { id: DATA-ROLE-001, title: "Roles controller/processor identificados",                severity: high,     applies_to: [legal, infra],        tags: [],                            file: 06-proteccion-datos/01-inventario-base-legal.md }
+
+  - { id: DATA-RIGHTS-001, title: "Acceso a los datos propios",                            severity: high,     applies_to: [backend, frontend],   tags: [gdpr-art-15],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-002, title: "Formato legible y portable",                            severity: medium,   applies_to: [backend],             tags: [gdpr-art-20],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-010, title: "Usuario puede corregir sus datos",                      severity: high,     applies_to: [backend, frontend],   tags: [gdpr-art-16],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-020, title: "Derecho al borrado implementable",                      severity: critical, applies_to: [backend, data],       tags: [gdpr-art-17],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-021, title: "Cascada de borrado documentada",                        severity: high,     applies_to: [backend, data],       tags: [],                            file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-022, title: "Anonimización como alternativa",                        severity: medium,   applies_to: [backend, data],       tags: [],                            file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-030, title: "Oposición a tratamientos opcionales",                   severity: high,     applies_to: [frontend, backend],   tags: [gdpr-art-21],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-031, title: "Limitación al tratamiento",                             severity: medium,   applies_to: [backend],             tags: [gdpr-art-18],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-040, title: "Exportación en formato estándar",                       severity: medium,   applies_to: [backend],             tags: [gdpr-art-20],                 file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-050, title: "Derecho sobre decisiones automatizadas",                severity: high,     applies_to: [backend, ai, frontend], tags: [gdpr-art-22],               file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-051, title: "Transparencia en uso de IA",                            severity: medium,   applies_to: [frontend],            tags: [],                            file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-060, title: "Canal claro para ejercer derechos",                     severity: high,     applies_to: [frontend, backend],   tags: [],                            file: 06-proteccion-datos/02-derechos-usuarios.md }
+  - { id: DATA-RIGHTS-061, title: "Verificación de identidad proporcional",                severity: medium,   applies_to: [backend],             tags: [],                            file: 06-proteccion-datos/02-derechos-usuarios.md }
+
+  - { id: DATA-SEC-001, title: "Cifrado en tránsito y reposo",                             severity: critical, applies_to: [infra, backend],      tags: [gdpr-art-32],                 file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-SEC-002, title: "Control de acceso por rol y auditoría",                    severity: high,     applies_to: [backend, infra],      tags: [least-privilege],             file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-SEC-003, title: "Datos de producción no en dev/staging",                    severity: critical, applies_to: [data, infra],         tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-SEC-004, title: "Registros de acceso a datos sensibles",                    severity: high,     applies_to: [backend],             tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-RET-001, title: "Políticas de retención por tipo",                          severity: high,     applies_to: [data, legal],         tags: [gdpr-art-5],                  file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-RET-002, title: "Borrado automático al vencer retención",                   severity: high,     applies_to: [backend, data],       tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-RET-003, title: "Propagación del borrado a todos los sistemas",             severity: high,     applies_to: [backend, data],       tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-RET-004, title: "Borrado de cuenta vs. borrado de datos",                   severity: medium,   applies_to: [backend],             tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-INTL-001, title: "Transferencias internacionales legitimadas",              severity: high,     applies_to: [legal, infra],        tags: [gdpr-ch-v],                   file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-INTL-002, title: "DPA con cada encargado",                                  severity: critical, applies_to: [legal],               tags: [gdpr-art-28],                 file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-INC-001, title: "Plan de respuesta a incidentes",                           severity: critical, applies_to: [legal, infra, backend], tags: [gdpr-art-33, gdpr-art-34], file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-INC-002, title: "Registro de brechas incluso sin notificación",             severity: high,     applies_to: [legal],               tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-DPIA-001, title: "DPIA para tratamientos de alto riesgo",                   severity: high,     applies_to: [legal, data],         tags: [gdpr-art-35],                 file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-3P-001, title: "Datos de terceros en documentos del usuario",               severity: high,     applies_to: [backend],             tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+  - { id: DATA-3P-002, title: "Secreto profesional / privilegios",                         severity: critical, applies_to: [backend],             tags: [],                            file: 06-proteccion-datos/03-seguridad-retencion.md }
+
+  # ========================================================================
+  # 07. IA / LLM
+  # ========================================================================
+  - { id: LLM-PROMPT-001, title: "Prompts en archivos versionados",                        severity: high,     applies_to: [ai, backend],         tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-002, title: "Separación system/user/data",                            severity: critical, applies_to: [ai, backend],         tags: [owasp-llm01, prompt-injection], file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-003, title: "Variables con sanitización",                             severity: high,     applies_to: [ai, backend],         tags: [prompt-injection],            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-004, title: "Versionado y comparación entre versiones",               severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-010, title: "Instrucciones claras sin ambigüedad",                    severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-011, title: "Salida estructurada (JSON schema)",                      severity: high,     applies_to: [ai, backend],         tags: [reliability],                 file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-012, title: "Chain-of-thought cuando mejora",                         severity: low,      applies_to: [ai],                  tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-020, title: "Contexto con fuente (RAG)",                              severity: high,     applies_to: [ai],                  tags: [rag, hallucinations],         file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-021, title: "Longitud de contexto dentro del límite",                 severity: medium,   applies_to: [ai],                  tags: [cost, reliability],           file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-030, title: "Idioma del prompt explícito",                            severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+  - { id: LLM-PROMPT-031, title: "Glosario de dominio",                                    severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/01-prompts-ingenieria.md }
+
+  - { id: LLM-SEC-001, title: "User input como dato, no instrucción",                      severity: critical, applies_to: [ai, backend],         tags: [owasp-llm01, prompt-injection], file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-002, title: "Validación de output antes de actuar",                      severity: critical, applies_to: [ai, backend],         tags: [owasp-llm02],                 file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-003, title: "Tool/function calling con autorización",                    severity: critical, applies_to: [ai, backend],         tags: [owasp-llm07, agent-security], file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-010, title: "PII minimizada en prompts",                                 severity: high,     applies_to: [ai, data],            tags: [data-minimization],           file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-011, title: "DPA con el proveedor",                                      severity: high,     applies_to: [legal, ai],           tags: [gdpr, vendor-dpa],            file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-012, title: "No enviar sensibles a modelos públicos",                    severity: critical, applies_to: [backend, legal],      tags: [data-leakage],                file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-013, title: "Redacción antes de loggear prompts",                        severity: high,     applies_to: [backend],             tags: [cwe-532],                     file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-020, title: "Filtros de contenido en entrada/salida",                    severity: high,     applies_to: [ai],                  tags: [safety, owasp-llm09],         file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-021, title: "Protección anti-abuse / budgets",                           severity: high,     applies_to: [backend, ai],         tags: [cost, dos],                   file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-022, title: "Detección de prompt injection activa",                      severity: medium,   applies_to: [ai, backend],         tags: [defense-in-depth],            file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-030, title: "Identificación de contenido generado por IA",               severity: medium,   applies_to: [frontend],            tags: [transparency],                file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-031, title: "Human in the loop en decisiones sensibles",                 severity: high,     applies_to: [backend, frontend],   tags: [],                            file: 07-ia-llm/02-seguridad-prompts.md }
+  - { id: LLM-SEC-032, title: "Protección contra leakage de system prompt",                severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/02-seguridad-prompts.md }
+
+  - { id: LLM-API-001, title: "Cliente reutilizable con configuración central",            severity: medium,   applies_to: [backend, ai],         tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-API-002, title: "Timeout y backoff en cada llamada",                         severity: critical, applies_to: [backend, ai],         tags: [reliability],                 file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-API-003, title: "Manejo específico de errores del proveedor",                severity: high,     applies_to: [backend, ai],         tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-API-004, title: "Concurrencia limitada con semáforo",                        severity: high,     applies_to: [backend, ai],         tags: [rate-limit, backpressure],    file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-API-005, title: "Streaming cuando el output es grande",                      severity: medium,   applies_to: [backend, ai],         tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-COST-001, title: "Tracking de tokens y costo por request",                   severity: high,     applies_to: [backend, ai],         tags: [cost-control],                file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-COST-002, title: "Presupuestos por usuario/org",                             severity: high,     applies_to: [backend],             tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-COST-003, title: "Selección del modelo adecuado",                            severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-COST-004, title: "Caché de resultados idénticos",                            severity: medium,   applies_to: [backend, ai],         tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-COST-005, title: "Optimización del prompt (context reuse)",                  severity: medium,   applies_to: [ai, backend],         tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-OBS-001, title: "Latencia y throughput medidos",                             severity: high,     applies_to: [backend, ai, observability], tags: [],                      file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-OBS-002, title: "Log de prompts y respuestas con muestreo",                  severity: medium,   applies_to: [backend, ai],         tags: [debugging, cost-control],     file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-OBS-003, title: "Dashboards y alertas específicas de IA",                    severity: medium,   applies_to: [observability, ai],   tags: [],                            file: 07-ia-llm/03-integracion-costos.md }
+  - { id: LLM-API-010, title: "Fallback ante falla del proveedor",                         severity: high,     applies_to: [backend, ai],         tags: [resilience],                  file: 07-ia-llm/03-integracion-costos.md }
+
+  - { id: LLM-REL-001, title: "Grounding contra fuentes cuando aplica",                    severity: high,     applies_to: [ai],                  tags: [rag, hallucinations],         file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-002, title: "Auto-crítica o verificación post-hoc",                      severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-003, title: "'No sé' como opción válida",                                severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-010, title: "Temperature/seed apropiados",                               severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-011, title: "Self-consistency si aporta",                                severity: low,      applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-EVAL-001, title: "Dataset de evaluación mantenido",                          severity: high,     applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-EVAL-002, title: "Métricas automatizadas de calidad",                        severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-EVAL-003, title: "Evaluación humana periódica",                              severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-EVAL-004, title: "Red-teaming adversarial",                                  severity: medium,   applies_to: [ai, security],        tags: [safety],                      file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-020, title: "Mostrar nivel de confianza cuando aplica",                  severity: low,      applies_to: [ai, frontend],        tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-021, title: "Disclaimer visible ante output de IA",                      severity: medium,   applies_to: [frontend],            tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-FAIR-001, title: "Auditoría de sesgos",                                      severity: medium,   applies_to: [ai],                  tags: [fairness, nist-ai-rmf],       file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+  - { id: LLM-REL-030, title: "Pin del modelo y política de upgrade",                      severity: medium,   applies_to: [ai],                  tags: [],                            file: 07-ia-llm/04-confiabilidad-evaluacion.md }
+
+  # ========================================================================
+  # 08. USABILIDAD / UX
+  # ========================================================================
+  - { id: UX-FEED-001, title: "Feedback visible del estado del sistema",                   severity: high,     applies_to: [frontend],            tags: [nielsen-1],                   file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-002, title: "Estados distintos visualmente (loading/empty/error)",       severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-003, title: "Transiciones suaves entre estados",                         severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-010, title: "Confirmación en acciones destructivas",                     severity: high,     applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-011, title: "Undo cuando sea posible",                                   severity: medium,   applies_to: [frontend],            tags: [nielsen-3],                   file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-012, title: "Auto-save + indicador",                                     severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-020, title: "Mensajes de error útiles y humanos",                        severity: high,     applies_to: [frontend, backend],   tags: [nielsen-9],                   file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-FEED-021, title: "Recuperación asistida",                                     severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-CONSIST-001, title: "Consistencia visual y de comportamiento",                severity: medium,   applies_to: [frontend],            tags: [nielsen-4],                   file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-CONSIST-002, title: "Navegación estable",                                     severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-CONSIST-003, title: "Convenciones del SO/navegador",                          severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-PREV-001, title: "Validación temprana en formularios",                        severity: medium,   applies_to: [frontend],            tags: [nielsen-5],                   file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-PREV-002, title: "Valores razonables por defecto",                            severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-PREV-003, title: "Input masks para formatos complejos",                       severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-PERF-001, title: "Skeleton screens en cargas previsibles",                    severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+  - { id: UX-PERF-002, title: "Optimistic UI cuando el riesgo es bajo",                    severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/01-feedback-estados.md }
+
+  - { id: UX-HEUR-002, title: "Match con el mundo real y el usuario",                      severity: medium,   applies_to: [frontend, content],   tags: [nielsen-2],                   file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-HEUR-006, title: "Reconocer, no recordar",                                    severity: medium,   applies_to: [frontend],            tags: [nielsen-6],                   file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-HEUR-007, title: "Flexibilidad y eficiencia",                                 severity: medium,   applies_to: [frontend],            tags: [nielsen-7],                   file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-HEUR-008, title: "Estética y diseño minimalista",                             severity: medium,   applies_to: [frontend],            tags: [nielsen-8],                   file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-HEUR-010, title: "Ayuda y documentación accesibles",                          severity: medium,   applies_to: [frontend, content],   tags: [nielsen-10],                  file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-001, title: "Breakpoints estándar y testeados",                          severity: high,     applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-002, title: "Touch targets cómodos en móvil",                            severity: high,     applies_to: [frontend],            tags: [a11y, wcag-2-5-5],            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-003, title: "Imágenes y media responsivos",                              severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-004, title: "Tablas y layouts complejos en mobile",                      severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-005, title: "Navegación mobile accesible",                               severity: high,     applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-RESP-006, title: "Teclado virtual no oculta contenido",                       severity: high,     applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-COPY-001, title: "Tono y voz consistentes",                                   severity: low,      applies_to: [content, frontend],   tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-COPY-002, title: "Internacionalización técnica",                              severity: medium,   applies_to: [frontend, backend],   tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-STATE-001, title: "Onboarding mínimo",                                        severity: medium,   applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+  - { id: UX-STATE-002, title: "Progresión visible hacia completar tareas",                severity: low,      applies_to: [frontend],            tags: [],                            file: 08-usabilidad-ux/02-nielsen-responsive.md }
+
+  # ========================================================================
+  # 09. ACCESIBILIDAD (WCAG 2.2 AA)
+  # ========================================================================
+  - { id: A11Y-PER-001, title: "Alt text para imágenes/íconos/media",                      severity: high,     applies_to: [frontend],            tags: [wcag-1-1-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-PER-002, title: "Estructura semántica en HTML",                             severity: high,     applies_to: [frontend],            tags: [wcag-1-3-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-PER-003, title: "Contraste de color suficiente",                            severity: high,     applies_to: [frontend, design],    tags: [wcag-1-4-3],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-PER-004, title: "Texto redimensionable 200% sin pérdida",                   severity: medium,   applies_to: [frontend],            tags: [wcag-1-4-4, wcag-1-4-10],     file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-PER-005, title: "Color no es el único indicador",                           severity: high,     applies_to: [frontend],            tags: [wcag-1-4-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-PER-006, title: "Contenido no depende de orientación",                      severity: low,      applies_to: [frontend],            tags: [wcag-1-3-4],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-001, title: "Todo es operable con teclado",                              severity: critical, applies_to: [frontend],            tags: [wcag-2-1-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-002, title: "Focus visible y claro",                                     severity: critical, applies_to: [frontend],            tags: [wcag-2-4-7, wcag-2-4-11],     file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-003, title: "Sin trampas de teclado",                                    severity: critical, applies_to: [frontend],            tags: [wcag-2-1-2],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-004, title: "Skip links para navegación repetitiva",                     severity: medium,   applies_to: [frontend],            tags: [wcag-2-4-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-005, title: "Orden de tab lógico y predecible",                          severity: high,     applies_to: [frontend],            tags: [wcag-2-4-3],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-006, title: "Tiempo suficiente / desactivable",                          severity: medium,   applies_to: [frontend],            tags: [wcag-2-2-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-007, title: "Sin parpadeos peligrosos (>3Hz)",                           severity: critical, applies_to: [frontend],            tags: [wcag-2-3-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-008, title: "Gestos complejos tienen alternativa simple",                severity: medium,   applies_to: [frontend],            tags: [wcag-2-5-1],                  file: 09-accesibilidad/01-perceptible-operable.md }
+  - { id: A11Y-OP-009, title: "Touch targets adecuados",                                   severity: medium,   applies_to: [frontend],            tags: [wcag-2-5-5, wcag-2-5-8],      file: 09-accesibilidad/01-perceptible-operable.md }
+
+  - { id: A11Y-UND-001, title: "Idioma de la página y fragmentos declarado",               severity: high,     applies_to: [frontend],            tags: [wcag-3-1-1, wcag-3-1-2],      file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-UND-002, title: "Navegación consistente",                                   severity: medium,   applies_to: [frontend],            tags: [wcag-3-2-3],                  file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-UND-003, title: "Sin cambios de contexto automáticos",                      severity: high,     applies_to: [frontend],            tags: [wcag-3-2-1, wcag-3-2-2],      file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-UND-004, title: "Errores y formularios con ayuda",                          severity: high,     applies_to: [frontend],            tags: [wcag-3-3-1, wcag-3-3-3],      file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-UND-005, title: "Confirmación en acciones legales/financieras",             severity: high,     applies_to: [frontend],            tags: [wcag-3-3-4, wcag-3-3-6],      file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-UND-006, title: "Autocompletado y ayuda consistente",                       severity: medium,   applies_to: [frontend],            tags: [wcag-1-3-5, wcag-3-3-7],      file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ROB-001, title: "HTML válido y sin IDs duplicados",                         severity: medium,   applies_to: [frontend],            tags: [wcag-4-1-1],                  file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ROB-002, title: "Name, role, value correctos (elements + ARIA)",            severity: critical, applies_to: [frontend],            tags: [wcag-4-1-2],                  file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ROB-003, title: "Anuncios de cambios dinámicos (live regions)",             severity: high,     applies_to: [frontend],            tags: [wcag-4-1-3],                  file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-001, title: "Modales con patrón ARIA",                                 severity: high,     applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-002, title: "Dropdowns y menús con patrón ARIA",                       severity: high,     applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-003, title: "Tabs con patrón ARIA",                                    severity: high,     applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-004, title: "Accordion / Disclosure",                                  severity: medium,   applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-005, title: "Tooltips",                                                severity: medium,   applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-006, title: "Combobox y autocomplete",                                 severity: medium,   applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-ARIA-007, title: "Tree / Treegrid / Data grid",                             severity: medium,   applies_to: [frontend],            tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-TEST-001, title: "Herramientas automáticas (axe, Lighthouse)",              severity: high,     applies_to: [testing],             tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+  - { id: A11Y-TEST-002, title: "Testing manual con teclado y screen reader",              severity: high,     applies_to: [testing],             tags: [],                            file: 09-accesibilidad/02-comprensible-robusto.md }
+
+  # ========================================================================
+  # 10. OBSERVABILIDAD
+  # ========================================================================
+  - { id: OBS-LOG-001, title: "Logs estructurados (JSON) en producción",                   severity: high,     applies_to: [backend, infra],      tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-LOG-002, title: "Niveles de log usados correctamente",                       severity: medium,   applies_to: [all],                 tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-LOG-003, title: "Contexto útil en cada log",                                 severity: medium,   applies_to: [backend],             tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-LOG-004, title: "PII y secretos redactados en logs",                         severity: critical, applies_to: [backend],             tags: [cwe-532, privacy],            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-LOG-005, title: "Retención y agregación de logs",                            severity: medium,   applies_to: [infra],               tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-LOG-006, title: "Logs frontend capturados",                                  severity: medium,   applies_to: [frontend],            tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-MET-001, title: "Métricas RED por endpoint/servicio",                        severity: high,     applies_to: [backend, observability], tags: [],                         file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-MET-002, title: "Métricas USE en recursos",                                  severity: medium,   applies_to: [infra, observability], tags: [],                          file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-MET-003, title: "Métricas de negocio",                                       severity: medium,   applies_to: [backend],             tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-MET-004, title: "Cardinalidad controlada",                                   severity: medium,   applies_to: [observability],       tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-SLO-001, title: "SLOs definidos para servicios críticos",                    severity: medium,   applies_to: [observability, product], tags: [],                         file: 10-observabilidad/01-logs-metricas.md }
+  - { id: OBS-SLO-002, title: "Alertas basadas en burn rate",                              severity: medium,   applies_to: [observability],       tags: [],                            file: 10-observabilidad/01-logs-metricas.md }
+
+  - { id: OBS-TRACE-001, title: "Tracing distribuido con IDs propagados",                  severity: high,     applies_to: [backend, observability], tags: [],                         file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-TRACE-002, title: "Spans con atributos útiles",                              severity: medium,   applies_to: [backend],             tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-TRACE-003, title: "Muestreo inteligente",                                    severity: medium,   applies_to: [observability],       tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-TRACE-004, title: "Correlación logs ↔ trazas",                               severity: high,     applies_to: [backend, observability], tags: [],                         file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-CORR-001, title: "Request-Id end-to-end",                                    severity: high,     applies_to: [backend, api, frontend], tags: [],                         file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-ALERT-001, title: "Alertas accionables, no ruido",                           severity: high,     applies_to: [observability],       tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-ALERT-002, title: "Canales por severidad",                                   severity: medium,   applies_to: [observability],       tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-ALERT-003, title: "Alertas sobre síntomas, no causas",                       severity: medium,   applies_to: [observability],       tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-HEALTH-001, title: "Liveness y readiness separados",                         severity: high,     applies_to: [backend, infra],      tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-HEALTH-002, title: "Métricas de dependencias externas",                      severity: medium,   applies_to: [backend, observability], tags: [],                         file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-RUN-001, title: "Runbooks para alertas críticas",                            severity: medium,   applies_to: [observability, infra], tags: [],                           file: 10-observabilidad/02-trazas-alertas.md }
+  - { id: OBS-RUN-002, title: "Post-mortem blameless",                                     severity: medium,   applies_to: [process],             tags: [],                            file: 10-observabilidad/02-trazas-alertas.md }
+
+  # ========================================================================
+  # 11. CI/CD y DEVOPS
+  # ========================================================================
+  - { id: CICD-PIPE-001, title: "Pipeline por PR con etapas fast-fail",                    severity: high,     applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-PIPE-002, title: "Builds reproducibles",                                    severity: high,     applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-PIPE-003, title: "Caché efectiva entre runs",                               severity: medium,   applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-PIPE-004, title: "Branch protection y aprobaciones",                        severity: high,     applies_to: [process],             tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-GATE-001, title: "Lint/format/typecheck bloqueantes",                       severity: high,     applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-GATE-002, title: "Tests unit + integración obligatorios",                   severity: critical, applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-GATE-003, title: "Análisis de seguridad (SAST/SCA/IaC)",                    severity: high,     applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-GATE-004, title: "Escaneo de imágenes Docker",                              severity: high,     applies_to: [ci-cd, infra],        tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-GATE-005, title: "Tamaño de PR acotado",                                    severity: low,      applies_to: [process],             tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-VER-001, title: "Versionado semántico",                                     severity: medium,   applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-VER-002, title: "Conventional commits",                                     severity: low,      applies_to: [process],             tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-ENV-001, title: "Ambientes espejados",                                      severity: high,     applies_to: [infra],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-ENV-002, title: "Promoción de artefacto, no rebuild",                       severity: high,     applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-DX-001, title: "Local parity con CI",                                       severity: medium,   applies_to: [process],             tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+  - { id: CICD-DX-002, title: "CI rápido (< 10 min)",                                      severity: medium,   applies_to: [ci-cd],               tags: [],                            file: 11-cicd-devops/01-pipelines-gates.md }
+
+  - { id: CICD-DEPLOY-001, title: "Despliegue con downtime cero",                          severity: high,     applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-DEPLOY-002, title: "Canary / progressive rollout",                          severity: medium,   applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-DEPLOY-003, title: "Rollback rápido y probado",                             severity: critical, applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-FLAG-001, title: "Feature flags para cambios riesgosos",                    severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-FLAG-002, title: "Flags evaluados consistentemente",                        severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-IAC-001, title: "Toda la infra como código",                                severity: high,     applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-IAC-002, title: "Secretos fuera del IaC",                                   severity: critical, applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-IAC-003, title: "Módulos reutilizables y versionados",                      severity: medium,   applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-DB-001, title: "Migraciones versionadas y automatizadas",                   severity: high,     applies_to: [data, ci-cd],         tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-DB-002, title: "Migraciones compatibles con zero-downtime",                 severity: high,     applies_to: [data],                tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-BK-001, title: "Backups automáticos y probados",                            severity: critical, applies_to: [infra, data],         tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-BK-002, title: "Disaster recovery plan",                                    severity: high,     applies_to: [infra],               tags: [],                            file: 11-cicd-devops/02-releases-infraestructura.md }
+  - { id: CICD-DEPLOY-010, title: "DORA metrics medidas",                                  severity: medium,   applies_to: [observability, ci-cd], tags: [],                           file: 11-cicd-devops/02-releases-infraestructura.md }
+
+  # ========================================================================
+  # 12. ARQUITECTURA
+  # ========================================================================
+  - { id: ARCH-LAYER-001, title: "Capas claras con dependencias unidireccionales",         severity: high,     applies_to: [backend, frontend],   tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-LAYER-002, title: "Bounded contexts explícitos",                            severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-LAYER-003, title: "Separación lectura/escritura si aporta",                 severity: low,      applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-COUPL-001, title: "Servicios con contratos estables",                       severity: high,     applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-COUPL-002, title: "Dependencias entre servicios minimizadas",               severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-COUPL-003, title: "Comunicación asíncrona cuando aplica",                   severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-COUPL-004, title: "Shared libraries minimal",                               severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-DATA-001, title: "Ownership de datos claro",                                severity: high,     applies_to: [backend, data],       tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-DATA-002, title: "Cambios de schema compatibles",                           severity: high,     applies_to: [data],                tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-DATA-003, title: "Caching con invalidación explícita",                      severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-TENANT-001, title: "Estrategia multi-tenancy definida",                     severity: high,     applies_to: [backend, data],       tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-REGION-001, title: "Estrategia multi-region consciente",                    severity: medium,   applies_to: [infra],               tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-SCALE-001, title: "Servicios stateless cuando sea posible",                 severity: high,     applies_to: [backend, infra],      tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-SCALE-002, title: "Trabajos en colas para desacoplar spikes",               severity: medium,   applies_to: [backend, infra],      tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-DOC-001, title: "Diagramas actualizados (C4)",                              severity: medium,   applies_to: [documentation],       tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+  - { id: ARCH-DOC-002, title: "ADRs para decisiones arquitecturales",                     severity: medium,   applies_to: [documentation],       tags: [],                            file: 12-arquitectura/01-principios-fronteras.md }
+
+  - { id: ARCH-RES-001, title: "Timeouts en toda dependencia",                             severity: critical, applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-RES-002, title: "Circuit breakers",                                         severity: high,     applies_to: [backend],             tags: [resilience],                  file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-RES-003, title: "Bulkheads: recursos aislados",                             severity: medium,   applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-RES-004, title: "Retries con política clara",                               severity: high,     applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-IDEM-001, title: "Idempotencia de cara al cliente",                         severity: high,     applies_to: [api, backend],        tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-IDEM-002, title: "Idempotencia entre servicios y workers",                  severity: high,     applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-CONS-001, title: "Transacciones distribuidas vía saga",                     severity: high,     applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-CONS-002, title: "Outbox pattern",                                          severity: high,     applies_to: [backend, data],       tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-MSG-001, title: "Colas con garantías claras + DLQ",                         severity: high,     applies_to: [backend, infra],      tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-MSG-002, title: "Schemas de eventos versionados",                           severity: high,     applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-DEGRAD-001, title: "Degradación definida por feature",                      severity: medium,   applies_to: [backend, frontend],   tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-DEGRAD-002, title: "Kill switches",                                         severity: high,     applies_to: [backend, frontend],   tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-PAT-001, title: "Read models / CQRS si aporta",                             severity: low,      applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-PAT-002, title: "Event-sourcing evaluado",                                  severity: low,      applies_to: [backend],             tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+  - { id: ARCH-PAT-003, title: "Sidecar/gateway para cross-cutting",                       severity: medium,   applies_to: [infra],               tags: [],                            file: 12-arquitectura/02-resiliencia-patrones.md }
+
+  # ========================================================================
+  # 13. BASE DE DATOS
+  # ========================================================================
+  - { id: DB-SCHEMA-001, title: "Nombres consistentes y autodescriptivos",                 severity: low,      applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SCHEMA-002, title: "Tipos correctos por columna",                             severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SCHEMA-003, title: "Constraints obligatorios declarados",                     severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SCHEMA-004, title: "Normalización adecuada al caso",                          severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SCHEMA-005, title: "Columnas de auditoría",                                   severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SCHEMA-010, title: "Política de borrado definida",                            severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-MIG-001, title: "Migraciones versionadas en el repo",                         severity: high,     applies_to: [data, ci-cd],         tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-MIG-002, title: "Migraciones seguras (expand/contract)",                      severity: critical, applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-MIG-003, title: "Migraciones idempotentes",                                   severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-MIG-004, title: "Migraciones revisadas con ojo crítico",                      severity: high,     applies_to: [process],             tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-MIG-005, title: "Backfills en background",                                    severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+  - { id: DB-SEED-001, title: "Seeds mínimos para desarrollo",                             severity: low,      applies_to: [data, process],       tags: [],                            file: 13-base-datos/01-esquema-migraciones.md }
+
+  - { id: DB-QRY-001, title: "SELECT acotado a campos necesarios",                         severity: medium,   applies_to: [backend, data],       tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-QRY-002, title: "N+1 evitado con eager loading",                              severity: high,     applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-QRY-003, title: "LIMIT obligatorio en listados",                              severity: high,     applies_to: [backend, api],        tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-QRY-004, title: "Batching de escrituras",                                     severity: medium,   applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-QRY-005, title: "Queries lentas auditadas",                                   severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-IDX-001, title: "Índices para filtros comunes y FKs",                         severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-IDX-002, title: "Índices compuestos en orden correcto",                       severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-IDX-003, title: "Tipos de índice apropiados",                                 severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-IDX-004, title: "Índices no usados eliminados",                               severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-IDX-005, title: "Cambios de índice seguros",                                  severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-TXN-001, title: "Transacciones cortas",                                       severity: high,     applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-TXN-002, title: "Nivel de aislamiento documentado",                           severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-TXN-003, title: "Locking y deadlocks manejados",                              severity: high,     applies_to: [backend, data],       tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-TXN-004, title: "Rollback correcto en excepciones",                           severity: high,     applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-CONC-001, title: "Concurrencia optimista por default",                        severity: medium,   applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-CONC-002, title: "Locks pesimistas justificados",                             severity: medium,   applies_to: [backend],             tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-INT-001, title: "FKs con acciones explícitas",                                severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-INT-002, title: "Triggers documentados y minimizados",                        severity: medium,   applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-BK-001, title: "Backups automáticos testeados",                               severity: critical, applies_to: [data, infra],         tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-BK-002, title: "PITR cuando el dominio lo requiere",                          severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-SEC-001, title: "Credenciales de app con mínimo privilegio",                  severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+  - { id: DB-SEC-002, title: "Row-Level Security / tenant isolation",                      severity: high,     applies_to: [data],                tags: [],                            file: 13-base-datos/02-queries-transacciones.md }
+
+  # ========================================================================
+  # 14. DOCUMENTACIÓN
+  # ========================================================================
+  - { id: DOC-CODE-001, title: "API pública documentada",                                  severity: medium,   applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-CODE-002, title: "Tipos y contratos explícitos",                             severity: medium,   applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-CODE-003, title: "Comentarios explican el por qué",                          severity: low,      applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-README-001, title: "README con lo mínimo imprescindible",                    severity: high,     applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-README-002, title: ".env.example y configuración documentada",               severity: high,     applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-README-003, title: "Estructura del repo explicada",                          severity: medium,   applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-API-001, title: "OpenAPI/schema fuente de verdad",                           severity: high,     applies_to: [api],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-API-002, title: "Ejemplos completos por endpoint",                           severity: medium,   applies_to: [api],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-API-003, title: "Errores comunes documentados",                              severity: medium,   applies_to: [api],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-API-004, title: "Guías de uso más allá de la referencia",                    severity: medium,   applies_to: [api],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-CHANGE-001, title: "Changelog mantenido",                                    severity: medium,   applies_to: [all],                 tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-CHANGE-002, title: "Release notes para usuarios",                            severity: medium,   applies_to: [product, content],    tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-ON-001, title: "Onboarding para devs nuevos",                                severity: medium,   applies_to: [process],             tags: [],                            file: 14-documentacion/01-codigo-api.md }
+  - { id: DOC-ON-002, title: "Docs operacionales accesibles",                              severity: medium,   applies_to: [infra, process],      tags: [],                            file: 14-documentacion/01-codigo-api.md }
+
+  - { id: DOC-ADR-001, title: "ADRs para decisiones significativas",                       severity: medium,   applies_to: [documentation, process], tags: [],                         file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-ADR-002, title: "ADRs actualizados con la realidad",                         severity: low,      applies_to: [documentation],       tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DIAG-001, title: "Diagramas C4 (Context + Container)",                       severity: medium,   applies_to: [documentation],       tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DIAG-002, title: "Diagramas en formato editable",                            severity: low,      applies_to: [documentation],       tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DIAG-003, title: "Diagramas de flujos críticos",                             severity: medium,   applies_to: [documentation],       tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-OPS-001, title: "Runbooks por alerta crítica",                               severity: medium,   applies_to: [documentation, observability], tags: [],                  file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-OPS-002, title: "Playbook de incidentes",                                    severity: medium,   applies_to: [process],             tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-OPS-003, title: "Procedimientos de soporte",                                 severity: low,      applies_to: [process],             tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DOM-001, title: "Glosario del dominio (Ubiquitous Language)",                severity: medium,   applies_to: [documentation],       tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-COMP-001, title: "Política de privacidad accesible",                         severity: critical, applies_to: [legal, frontend],     tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-COMP-002, title: "Documentación de cumplimiento",                            severity: medium,   applies_to: [legal, documentation], tags: [],                           file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-COMP-003, title: "Threat model actualizado",                                 severity: medium,   applies_to: [security, documentation], tags: [security],                 file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DATA-001, title: "Data dictionary / catálogo",                               severity: medium,   applies_to: [data, documentation], tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+  - { id: DOC-DATA-002, title: "Pipelines y transformaciones documentadas",                severity: medium,   applies_to: [data],                tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
