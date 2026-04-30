@@ -274,6 +274,58 @@ y número de entradas.
 
 ---
 
+## E. Contenedores y runtime
+
+#### `SEC-FILE-040` — Proceso de la aplicación corre como usuario no-root
+**Severidad:** critical · **Tags:** `cwe-250`, `least-privilege`, `container-security` · **Aplica a:** infra · backend
+
+El proceso de la aplicación dentro del contenedor (Docker, OCI) corre con un
+usuario no privilegiado. UID=0 (root) solo se acepta durante las fases de build
+estrictamente necesarias.
+
+**Verificar:**
+- [ ] El `Dockerfile` incluye una instrucción `USER <non-root>` antes del `CMD`/`ENTRYPOINT`.
+- [ ] El usuario del proceso tiene solo los permisos necesarios sobre los archivos que debe leer/escribir.
+- [ ] Si se usa imagen base oficial (ej: `node:20-alpine`), se agrega un usuario dedicado explícitamente.
+- [ ] En orquestadores (Kubernetes, ECS), el `securityContext.runAsNonRoot: true` está configurado.
+- [ ] Volúmenes montados tienen ownership correcto para el usuario de la app.
+
+**Banderas rojas:**
+- `Dockerfile` sin ninguna instrucción `USER` antes del `CMD` — corre como root por defecto.
+- `USER root` explícito al final del Dockerfile sin revertir.
+- Imagen base que ya corre como root y no se sobreescribe.
+- `whoami` / `id` en logs de arranque mostrando `root` o `uid=0`.
+
+**Ejemplo de hallazgo:**
+```yaml
+control_id: SEC-FILE-040
+severity: critical
+file: Dockerfile
+line: 1
+evidence: |
+  FROM node:20-alpine
+  WORKDIR /app
+  COPY . .
+  RUN npm ci && npm run build
+  EXPOSE 3000
+  CMD ["node", "dist/main.js"]
+  # Sin instrucción USER — corre como UID=0 (root)
+explanation: |
+  El proceso de Express corre como root dentro del contenedor. Si un atacante
+  logra RCE a través de la aplicación (ej: explotando una vulnerabilidad de
+  inyección), tendrá privilegios root dentro del contenedor, facilitando la
+  escalada de privilegios o la extracción de secretos montados como volúmenes.
+suggestion: |
+  RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+  COPY --chown=appuser:appgroup dist/ dist/
+  USER appuser
+  CMD ["node", "dist/main.js"]
+```
+
+**Referencias:** CWE-250 · OWASP Docker Security Cheat Sheet · Docker docs — "Best practices: USER instruction" · CIS Docker Benchmark 4.1.
+
+---
+
 ## Checklist resumen
 
 | ID               | Control                                               | Severidad |
@@ -293,3 +345,4 @@ y número de entradas.
 | SEC-FILE-030     | Procesamiento en sandbox                              | high      |
 | SEC-FILE-031     | XXE prevenido                                         | critical  |
 | SEC-FILE-032     | Zip bomb / zip slip prevenido                         | high      |
+| SEC-FILE-040     | Proceso no-root en contenedor                         | critical  |

@@ -132,6 +132,34 @@ PRs gigantes son difíciles de revisar. Se promueve PRs pequeños.
 
 ---
 
+#### `CICD-GATE-006` — Actualización automática de dependencias (Dependabot / Renovate)
+**Severidad:** medium · **Aplica a:** ci-cd · process
+
+Un bot de actualización de dependencias (Dependabot, Renovate) está configurado
+y abre PRs automáticos cuando hay nuevas versiones. Elimina la deuda silenciosa
+de dependencias desactualizadas entre auditorías de seguridad.
+
+> Este control es **complementario** a `CICD-GATE-003` (SCA de vulnerabilidades
+> conocidas): ese detecta CVEs; este mantiene el proyecto actualizado
+> **antes** de que las versiones queden muy atrás.
+
+**Verificar:**
+- [ ] `.github/dependabot.yml` o `renovate.json` presente en el repo y activo.
+- [ ] Los PRs de actualización entran al pipeline normal (lint, tests, security scan).
+- [ ] Schedule razonable (semanal o mensual), no diario para repos activos.
+- [ ] Las actualizaciones de seguridad se configuran con prioridad alta (o `security-updates-only: true` en Dependabot).
+- [ ] `automerge` habilitado para `patch` y `minor` cuando la cobertura de tests lo justifica.
+- [ ] Actualizaciones de `major` requieren revisión manual y se cierran explícitamente si no se van a hacer.
+
+**Banderas rojas:**
+- Repo sin `dependabot.yml` ni `renovate.json`.
+- `npm outdated` / `pip list --outdated` muestra dependencias con > 6 meses sin actualizar sin explicación.
+- Bot configurado pero PRs de actualización acumulados sin mergear ni cerrar (> 20 PRs abiertos indefinidamente).
+
+**Referencias:** GitHub Dependabot docs · Renovate docs · OWASP A06:2021 (Vulnerable and Outdated Components).
+
+---
+
 ## C. Versionado y tags
 
 #### `CICD-VER-001` — Versionado semántico
@@ -228,6 +256,7 @@ Feedback rápido aumenta la productividad.
 | CICD-GATE-003    | Análisis de seguridad                               | high      |
 | CICD-GATE-004    | Escaneo de imágenes                                 | high      |
 | CICD-GATE-005    | PRs acotados                                        | low       |
+| CICD-GATE-006    | Dependabot / Renovate configurado                   | medium    |
 | CICD-VER-001     | Versionado semántico                                | medium    |
 | CICD-VER-002     | Conventional commits                                | low       |
 | CICD-ENV-001     | Ambientes espejados                                 | high      |

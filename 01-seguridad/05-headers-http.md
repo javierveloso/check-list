@@ -146,6 +146,31 @@ sirvan scripts arbitrarios.
 
 ---
 
+#### `SEC-HEADERS-012` — Subresource Integrity (SRI) para scripts y estilos externos
+**Severidad:** high · **Tags:** `supply-chain`, `cwe-829` · **Aplica a:** frontend
+
+Los `<script>` y `<link>` que cargan recursos desde CDNs externos llevan el
+atributo `integrity` con el hash SHA del recurso exacto. Si el CDN es comprometido
+y sirve un archivo distinto, el navegador lo rechaza automáticamente.
+
+**Verificar:**
+- [ ] Todo `<script src="https://cdn.externo.com/...">` incluye `integrity="sha256-..."` o `sha384-...` y `crossorigin="anonymous"`.
+- [ ] Todo `<link rel="stylesheet" href="https://cdn.externo.com/...">` también lleva `integrity`.
+- [ ] El hash se genera sobre el contenido exacto del asset de producción (no del de desarrollo).
+- [ ] Cuando el recurso externo se actualiza, el hash se actualiza y el diff se revisa.
+- [ ] Para recursos que no admiten SRI (Google Fonts dinámico, analytics con versioning flotante): se auto-hospeda el recurso, o se aplica CSP `connect-src` restrictivo como compensación.
+
+**Banderas rojas:**
+- `<script src="https://cdn.jsdelivr.net/npm/library@latest/dist/lib.min.js">` sin `integrity` — "latest" cambia sin aviso.
+- Scripts de CDN corporativo interno sin SRI asumiendo que "es de confianza".
+- Hash calculado sobre el bundle minificado de desarrollo, diferente del de producción.
+
+**Herramientas:** https://www.srihash.org/ · bundler plugin `webpack-subresource-integrity` · CLI `openssl dgst -sha384 -binary file | openssl base64`.
+
+**Referencias:** W3C Subresource Integrity · MDN SRI · CWE-829.
+
+---
+
 ## C. Cookies (refuerza SEC-AUTH-014)
 
 #### `SEC-HEADERS-020` — Atributos seguros en todas las cookies
@@ -272,6 +297,7 @@ prevenir response bombs.
 | SEC-HEADERS-007    | Ocultar headers informativos                           | low       |
 | SEC-HEADERS-010    | CSP restrictivo                                        | high      |
 | SEC-HEADERS-011    | CSP sin bypasses conocidos                             | high      |
+| SEC-HEADERS-012    | Subresource Integrity (SRI) para CDN externos          | high      |
 | SEC-HEADERS-020    | Atributos seguros en cookies                           | high      |
 | SEC-HEADERS-030    | Rate limiting global y por endpoint                    | critical  |
 | SEC-HEADERS-031    | Headers informativos de rate limit                     | medium    |

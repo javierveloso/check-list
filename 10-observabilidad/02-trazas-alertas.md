@@ -86,6 +86,7 @@ Cada alerta tiene un responsable claro, un runbook y es verificable.
 
 **Verificar:**
 - [ ] Cada alerta documenta: qué significa, cómo validar, cómo mitigar.
+- [ ] El mensaje de la alerta incluye **link directo al runbook** correspondiente (no requiere buscarlo manualmente a las 3 AM).
 - [ ] Se mide el ratio de alertas accionables vs false positives.
 - [ ] Alertas muy ruidosas se ajustan o retiran.
 - [ ] Alert fatigue evitada (on-call health review).
@@ -135,6 +136,11 @@ readiness (está listo para atender tráfico).
 - [ ] `GET /readyz` readiness: valida BD, cache, deps críticas. Devuelve 503 si alguna no está lista.
 - [ ] Orchestrator (K8s) usa ambos con timeouts apropiados.
 - [ ] No se confunden: un DB caído hace readiness fail, pero no necesariamente liveness.
+
+**Banderas rojas:**
+- Endpoint `/health` que retorna `{ "status": "ok" }` sin verificar BD ni dependencias — devuelve 200 incluso cuando la app no puede procesar requests (health check cosmético).
+- Liveness y readiness apuntan al mismo endpoint: un DB caído provoca reinicio del pod en lugar de sacarlo de rotación.
+- Readiness no retorna `503` ante dependencia crítica caída — el load balancer sigue enviando tráfico.
 
 ---
 

@@ -83,17 +83,27 @@ Los logs se envían a un backend centralizado con retención definida.
 
 ---
 
-#### `OBS-LOG-006` — Logs frontend
-**Severidad:** medium · **Aplica a:** frontend
+#### `OBS-LOG-006` — Errores no manejados capturados en frontend
+**Severidad:** high · **Aplica a:** frontend
 
-Errores no manejados en el frontend se capturan y envían al backend (Sentry,
-Datadog RUM).
+Errores no manejados en el frontend (render crashes, promesas rechazadas,
+excepciones globales) se capturan, se muestran al usuario de forma amigable
+y se envían a un sistema de observabilidad.
 
 **Verificar:**
-- [ ] `window.onerror` / `unhandledrejection` capturados.
-- [ ] Source maps suben al error tracker para simbolicación.
-- [ ] PII filtrada antes de enviar.
-- [ ] Sampling configurado para no ahogar cuota.
+- [ ] `window.addEventListener('error', handler)` y `window.addEventListener('unhandledrejection', handler)` registrados en el entrypoint (`main.tsx`, `main.ts`).
+- [ ] Existe un `ErrorBoundary` global que envuelve toda la aplicación (React, Vue Error Handler, Angular `ErrorHandler`).
+- [ ] El `ErrorBoundary` renderiza un fallback visual útil (no pantalla en blanco) con opción de "Reintentar".
+- [ ] Los errores capturados se envían a un sistema de observabilidad (Sentry, Datadog RUM, Azure Application Insights).
+- [ ] Source maps subidos al error tracker para simbolicación del stack en producción.
+- [ ] PII redactada antes de enviar (nombres, emails, tokens no aparecen en el contexto del error).
+- [ ] Sampling configurado para no superar cuota en picos de errores.
+
+**Banderas rojas:**
+- Ausencia de `ErrorBoundary` en el árbol de componentes raíz (`app.tsx`).
+- `console.error` como único mecanismo de reporte de errores — invisible en producción.
+- SDK de Sentry/Datadog no inicializado antes de `ReactDOM.createRoot` (errores tempranos se pierden).
+- `window.onerror` sobrescrito a `null` o listener ausente en el entrypoint.
 
 ---
 

@@ -173,6 +173,84 @@ formulario.
 
 ---
 
+#### `UX-RESP-007` — Viewport meta tag correcto
+**Severidad:** high · **Tags:** `mobile`, `viewport` · **Aplica a:** frontend
+
+El documento HTML declara el viewport correcto y no bloquea el zoom del usuario.
+
+**Verificar:**
+- [ ] `<meta name="viewport" content="width=device-width, initial-scale=1">` presente en el `<head>`.
+- [ ] No se usa `user-scalable=no` ni `maximum-scale=1` (bloquea el zoom de accesibilidad — incumple WCAG 1.4.4).
+- [ ] No hay `initial-scale` distinto de `1` sin justificación documentada.
+- [ ] En frameworks (Next.js, Vite), el meta se genera en el layout raíz y no es sobreescrito por páginas hijas.
+
+**Banderas rojas:**
+- Ausencia del meta viewport → iOS y Android renderizan la versión desktop a escala reducida y la experiencia táctil se rompe.
+- `user-scalable=no` → bloquea el zoom para usuarios con baja visión; además viola WCAG 1.4.4 (Success Criterion AA).
+
+---
+
+#### `UX-RESP-008` — Overflow horizontal controlado
+**Severidad:** medium · **Tags:** `css`, `layout` · **Aplica a:** frontend
+
+No hay scroll horizontal inesperado en ningún breakpoint. El `overflow: hidden`
+global no se usa como parche para ocultar elementos que se escapan del viewport.
+
+**Verificar:**
+- [ ] No hay `overflow-x: hidden` en `body` o `html` como solución a un bug de layout.
+- [ ] Se verifica en DevTools desactivando temporalmente `overflow: hidden` para encontrar los elementos que sobresalen.
+- [ ] Scroll horizontal solo aparece en contenedores intencionados (tablas anchas, code blocks, carousels con overflow explícito).
+- [ ] Elementos con anchos fijos en `px` se revisan en resoluciones < 375 px.
+
+**Banderas rojas:**
+- `body { overflow-x: hidden }` en el CSS global — enmascara bugs; en iOS puede generar un segundo scroll fantasma.
+- Contenedores con `width` fijo en px que sobresalen del viewport en pantallas pequeñas.
+- Margen o padding negativo que desplaza elementos fuera del viewport.
+
+---
+
+#### `UX-RESP-009` — Zoom y escalado de texto (WCAG 1.4.4)
+**Severidad:** high · **Tags:** `wcag-1-4-4`, `a11y` · **Aplica a:** frontend
+
+El contenido es funcional con el zoom del navegador al 200 % sin scroll horizontal
+ni pérdida de funcionalidad (obligatorio WCAG 2.2 AA).
+
+**Verificar:**
+- [ ] La interfaz es usable con zoom al 200 % (salvo mapas, diagramas y contenido gráfico complejo, que tienen excepción WCAG).
+- [ ] Los tamaños de fuente usan unidades relativas (`rem`, `em`) en lugar de `px` fijo.
+- [ ] Los contenedores de texto no tienen `height` fijo que corte el contenido al aumentar el tamaño de fuente.
+- [ ] Los breakpoints siguen activándose correctamente al hacer zoom (media queries responden al viewport lógico, no al físico).
+- [ ] Se prueba con `Ctrl/⌘ +` en Chrome/Firefox hasta 200 %.
+
+**Banderas rojas:**
+- Font sizes definidos con `px` fijo que ignoran la preferencia de tamaño de fuente del sistema operativo.
+- `height: 40px` en un botón o contenedor de texto que trunca el contenido al aumentar la fuente.
+- Texto cortado con `overflow: hidden` sin `min-height` que se adapte.
+
+**Referencias:** WCAG 2.2 SC 1.4.4 — Resize Text (AA).
+
+---
+
+#### `UX-RESP-010` — Dark mode y `prefers-color-scheme`
+**Severidad:** medium · **Tags:** `css`, `prefers-color-scheme` · **Aplica a:** frontend
+
+Si el sistema operativo del usuario está en dark mode, la aplicación responde
+con colores adecuados, o declara explícitamente que solo soporta light mode.
+
+**Verificar:**
+- [ ] Se probó la app con `prefers-color-scheme: dark` activado (DevTools → Rendering → Emulate).
+- [ ] Si no se implementa dark mode, se declara `<meta name="color-scheme" content="light">` para que el navegador no aplique estilos del sistema a inputs y scrollbars.
+- [ ] Colores hardcodeados (`#fff`, `#000`, `rgb(255,255,255)`) se revisaron en ambos modos.
+- [ ] Si se implementa dark mode: el contraste cumple WCAG AA (≥ 4.5:1 para texto normal) en ambos temas.
+- [ ] Si hay toggle de tema en la UI: el estado se persiste en `localStorage` / cookie y sobrevive a recarga.
+
+**Banderas rojas:**
+- Texto oscuro sobre fondo claro hardcodeado que queda ilegible cuando el OS aplica dark mode al `<body>`.
+- Imágenes PNG/JPG con fondo blanco que contrastan mal sobre fondos oscuros.
+- Colores de borde o placeholder que desaparecen en dark mode por bajo contraste.
+
+---
+
 ## C. Copy e internacionalización
 
 #### `UX-COPY-001` — Tono y voz consistentes
@@ -248,6 +326,10 @@ quedan.
 | UX-RESP-004       | Tablas/layouts en mobile                             | medium    |
 | UX-RESP-005       | Navegación mobile accesible                          | high      |
 | UX-RESP-006       | Teclado virtual                                      | high      |
+| UX-RESP-007       | Viewport meta tag correcto                           | high      |
+| UX-RESP-008       | Overflow horizontal controlado                       | medium    |
+| UX-RESP-009       | Zoom y escalado de texto (WCAG 1.4.4)                | high      |
+| UX-RESP-010       | Dark mode / prefers-color-scheme                     | medium    |
 | UX-COPY-001       | Tono consistente                                     | low       |
 | UX-COPY-002       | i18n técnica                                         | medium    |
 | UX-STATE-001      | Onboarding mínimo                                    | medium    |

@@ -154,15 +154,19 @@ Los componentes no se re-renderean innecesariamente en árboles grandes.
 El estado proveniente del server (queries) se cachea y se invalida con intención.
 
 **Verificar:**
-- [ ] Herramienta (TanStack Query, SWR, Apollo Cache) en uso.
-- [ ] `staleTime` configurado (datos no cambian cada segundo).
-- [ ] Invalidación por mutación (optimistic updates + rollback).
-- [ ] `gcTime`/`cacheTime` controla memoria en sesiones largas.
-- [ ] No hay refetch innecesario al foco si no se requiere.
+- [ ] Herramienta de caché de servidor (TanStack Query, SWR, Apollo Cache) en uso.
+- [ ] `staleTime` configurado acorde a la frecuencia real de cambio del recurso.
+- [ ] Invalidación por mutación con optimistic updates y rollback en caso de error.
+- [ ] `gcTime`/`cacheTime` controla la memoria en sesiones largas.
+- [ ] No hay refetch innecesario al recuperar el foco (`refetchOnWindowFocus: false` cuando no aplica).
+- [ ] Las llamadas a la misma URL desde distintos componentes comparten la misma entrada de caché.
 
 **Banderas rojas:**
-- Fetch en `useEffect` sin caché (refetch en cada remount).
-- Polling agresivo (1-2 s) sin necesidad.
+- Patrón `useEffect(() => { fetchX().then(setData) }, [id])` repetido en más de 3 componentes sin librería de caché.
+- Llamadas a `axiosInstance.get(url)` directamente dentro de componentes sin capa de caché intermedia.
+- Modal o drawer que dispara una nueva llamada de red cada vez que se abre.
+- Polling agresivo (intervalo ≤ 2 s) sin necesidad de tiempo real documentada.
+- Refetch disparado en cada remount de un componente de lista (ej: cambiar de pestaña → recarga completa).
 
 ---
 
@@ -177,6 +181,54 @@ no disparar layout/paint.
 - [ ] `will-change` solo cuando aporta.
 - [ ] `prefers-reduced-motion` respetado.
 - [ ] No hay JS animando por frame cosas que CSS podría.
+
+---
+
+#### `PERF-FE-023` — useEffect con I/O async: cleanup y AbortController
+**Severidad:** high · **Tags:** `memory-leak`, `react` · **Aplica a:** frontend
+
+Los `useEffect` que disparan fetch o suscripciones asíncronas retornan una función
+de cleanup que aborta la petición o cancela la suscripción al desmontar el
+componente. Previene memory leaks y condiciones de carrera cuando un ID cambia
+antes de completarse la petición anterior.
+
+**Verificar:**
+- [ ] Todo `useEffect` con `fetch` / Axios usa `AbortController` y retorna `() => controller.abort()`.
+- [ ] Axios recibe `{ signal: controller.signal }` como opción.
+- [ ] Suscripciones a WebSocket / EventSource se cierran en el cleanup.
+- [ ] El error de abort se captura y descarta silenciosamente (`axios.isCancel`, `err.name === 'AbortError'`).
+- [ ] No aparece el warning "Can't perform a React state update on an unmounted component" en consola.
+
+**Banderas rojas:**
+- `useEffect(() => { fetch(url).then(setData) }, [id])` sin AbortController ni cleanup.
+- Axios sin `signal` en efectos cuyo `id` puede cambiar rápidamente (buscador, paginación).
+- Componentes de lista / modal que disparan una petición nueva en cada montaje sin cancelar la anterior.
+
+**Ejemplo de hallazgo:**
+```yaml
+control_id: PERF-FE-023
+severity: high
+file: src/components/ItemDetail.tsx
+line: 14
+evidence: |
+  useEffect(() => {
+    axios.get(`/api/items/${id}`).then(res => setData(res.data));
+  }, [id]);
+explanation: |
+  Si el usuario navega antes de completar la petición, axios la continúa
+  y setData() intenta actualizar estado en un componente desmontado.
+  Cuando id cambia rápido (paginación), varias peticiones en vuelo pueden
+  resolverse fuera de orden (race condition).
+suggestion: |
+  useEffect(() => {
+    const controller = new AbortController();
+    axios
+      .get(`/api/items/${id}`, { signal: controller.signal })
+      .then(res => setData(res.data))
+      .catch(err => { if (!axios.isCancel(err)) setError(err); });
+    return () => controller.abort();
+  }, [id]);
+```
 
 ---
 
@@ -248,6 +300,7 @@ Hay presupuestos (bundle size, Lighthouse scores) que bloquean regresiones.
 | PERF-FE-020    | Evitar re-renders costosos                       | medium    |
 | PERF-FE-021    | Cache del estado del servidor                    | high      |
 | PERF-FE-022    | Animaciones suaves                               | low       |
+| PERF-FE-023    | useEffect async con cleanup (AbortController)    | high      |
 | PERF-FE-030    | HTTP/2+ y requests concurrentes                  | medium    |
 | PERF-FE-031    | Prefetch prudente                                | low       |
 | PERF-FE-040    | RUM en producción                                | high      |

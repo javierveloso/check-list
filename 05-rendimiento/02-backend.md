@@ -40,9 +40,42 @@ Todo I/O tiene timeout; las colas de trabajo no aceptan indefinidamente.
 
 **Verificar:**
 - [ ] Timeout en clientes HTTP, BD, cache.
+- [ ] ORM / cliente de BD con `connectTimeout`, `acquireTimeoutMillis` y `statement_timeout` configurados explícitamente.
 - [ ] Queue size máxima.
 - [ ] `503` retornado antes que aceptar más carga en sobrecarga.
 - [ ] Circuit breakers donde aporta.
+
+**Banderas rojas:**
+- `TypeORM DataSource` sin `connectTimeoutMS` / `acquireTimeoutMillis` — un pico de carga deja workers de Node.js bloqueados indefinidamente.
+- Express.js sin timeout a nivel HTTP (`server.setTimeout()`, middleware `connect-timeout`).
+- Clientes Axios/fetch sin `timeout` ni `signal` configurado.
+
+**Ejemplo de hallazgo:**
+```yaml
+control_id: PERF-BE-003
+severity: critical
+file: src/config/data-source.ts
+line: 3
+evidence: |
+  export const AppDataSource = new DataSource({
+    type: 'postgres',
+    host: process.env.DB_HOST,
+    // Sin connectTimeoutMS, acquireTimeoutMillis, statement_timeout
+    extra: { max: 10 },
+  });
+explanation: |
+  Sin timeout en el pool de TypeORM, una query lenta o una conexión rota
+  deja el worker de Node.js esperando indefinidamente. En picos de carga
+  el pool se agota y los requests se apilan sin ningún límite de espera,
+  degradando toda la aplicación hasta timeout del cliente.
+suggestion: |
+  extra: {
+    max: 10,
+    connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000,
+    statement_timeout: 30000,
+  },
+```
 
 ---
 
@@ -78,6 +111,7 @@ acorde al workload.
 **Banderas rojas:**
 - `httpx.AsyncClient()` dentro de cada handler.
 - `create_engine` dentro del handler.
+- `TypeORM DataSource` sin bloque `extra: { max: N, idleTimeoutMillis: N }` — el pool puede crecer sin límite y agotar las conexiones disponibles en PostgreSQL.
 
 ---
 
@@ -251,6 +285,183 @@ Hay tracing que permite identificar spans lentos entre servicios.
 
 ---
 
+## H. Complejidad algorítmica
+
+#### `PERF-BE-070` — Hot paths sin complejidad supralineal
+**Severidad:** high · **Tags:** `big-o`, `algorithmic-complexity` · **Aplica a:** backend
+
+Las funciones ejecutadas en el camino crítico (por request, por evento, dentro
+de loops sobre colecciones) tienen complejidad identificada. Una rutina O(n²)
+con n = 1.000 ejecutada 100 veces/segundo puede colapsar el servidor aunque
+en desarrollo con n = 10 parezca instantánea.
+
+**Verificar:**
+- [ ] Las funciones de transformación/filtrado sobre colecciones en hot paths tienen complejidad ≤ O(n log n).
+- [ ] Los bucles anidados sobre la misma colección se revisan: ¿puede reemplazarse con una sola pasada usando Map/Set auxiliar?
+- [ ] Las operaciones costosas que se repiten por cada elemento (búsqueda lineal, sort, serialización pesada) se precalculan fuera del loop.
+- [ ] Los cambios en el tamaño de entrada están documentados: si n puede crecer con el uso (registros por cliente, items en carrito), la complejidad se escala mentalmente al revisar.
+- [ ] Los sorts en hot paths usan comparadores simples sin I/O ni parsing dentro del comparador.
+
+**Banderas rojas:**
+- `for (const item of list) { if (otherList.includes(item)) ... }` — O(n·m), reemplazable con Set en O(n+m).
+- Sort con comparador que llama a `Date.parse()`, `split()` o `toLowerCase()` en cada comparación, en lugar de normalizar el array una sola vez antes.
+- Endpoint que tarda 10 ms con 100 registros, 400 ms con 1.000 y 40 s con 10.000 — comportamiento cuadrático en producción.
+- "Solo es lento cuando hay muchos datos" en una issue — indicador claro de complejidad supralineal sin detectar.
+
+---
+
+#### `PERF-BE-071` — Estructuras de datos adecuadas al patrón de acceso
+**Severidad:** high · **Tags:** `data-structures`, `big-o` · **Aplica a:** backend
+
+La elección de estructura de datos determina la complejidad de cada operación.
+Usar un array para búsquedas repetidas transforma O(1) en O(n); dentro de un
+loop, el resultado acumulado es O(n²).
+
+**Verificar:**
+- [ ] Membership checks frecuentes usan `Set` (`set.has(id)`) en lugar de `Array.includes()` / `array.find()`.
+- [ ] Lookups por clave usan `Map` u objeto indexado en lugar de `array.find(x => x.id === key)`.
+- [ ] Agrupaciones repetidas precalculan un `Map<key, items[]>` en una pasada, no `filter()` por cada grupo.
+- [ ] Colas FIFO de alta frecuencia usan estructuras con O(1) en ambos extremos — `array.shift()` en arrays largos es O(n).
+- [ ] Operaciones de conjunto (intersección, diferencia) usan Set para O(n+m), no `.filter(x => arr2.includes(x))` O(n·m).
+
+**Banderas rojas:**
+- `users.find(u => u.id === id)` dentro de un loop sobre recursos — O(n·users) por request.
+- `array.filter(x => x.status === 'active').length > 0` cuando `array.some(...)` termina en el primer match.
+- `array.unshift(item)` dentro de un loop — insertar al inicio de un array es O(n) por llamada.
+
+**Ejemplo de hallazgo:**
+```yaml
+control_id: PERF-BE-071
+severity: high
+file: src/services/authorization.service.ts
+line: 28
+evidence: |
+  for (const resource of resources) {
+    const allowed = user.permissions.find(p => p.resourceId === resource.id);
+    if (!allowed) continue;
+  }
+explanation: |
+  Array.find() es O(n_permisos). Con 500 recursos y 50 permisos = 25.000
+  comparaciones por request. A 100 req/s = 2.5M comparaciones/s innecesarias.
+suggestion: |
+  const permSet = new Set(user.permissions.map(p => p.resourceId));
+  for (const resource of resources) {
+    if (!permSet.has(resource.id)) continue;
+  }
+  // O(n_permisos + n_recursos) total vs O(n_permisos × n_recursos)
+```
+
+---
+
+#### `PERF-BE-072` — Construcción de strings en loops
+**Severidad:** medium · **Tags:** `string-building`, `memory` · **Aplica a:** backend
+
+La concatenación `str += item` en un loop crea una nueva cadena inmutable en
+cada iteración: O(n²) de tiempo y memoria. Para n = 10.000 ítems genera ~50 MB
+de strings intermedias que el GC debe colectar.
+
+**Verificar:**
+- [ ] La construcción de strings grandes usa `Array.push()` + `.join()`, `Buffer`, streams o `StringBuilder` equivalente.
+- [ ] Generación de CSV, SQL multi-row o HTML usa buffer de partes, no concatenación directa.
+- [ ] Los templates que producen centenares de líneas (reports, emails complejos) usan motor de plantillas.
+- [ ] SQL con cláusulas `IN (...)` construidas dinámicamente agrupan los parámetros desde el inicio, no acumulan con `+=`.
+
+**Banderas rojas:**
+- `let csv = ''; for (const row of rows) csv += formatRow(row);` sobre miles de filas.
+- `` let html = ''; items.forEach(i => { html += `<tr>...</tr>`; }); `` en endpoints de listado.
+- SQL construido como `query += ' AND x IN (' + ids.join(',') + ')'` sin usar query builder.
+
+---
+
+#### `PERF-BE-073` — Recursión acotada y sin bloqueo del event loop
+**Severidad:** high · **Tags:** `recursion`, `stack-overflow`, `event-loop` · **Aplica a:** backend
+
+Los algoritmos recursivos sobre datos de entrada del usuario (árboles, grafos,
+JSON anidado) deben tener profundidad máxima explícita. En Node.js, la recursión
+síncrona profunda bloquea el event loop para todos los requests simultáneos.
+
+**Verificar:**
+- [ ] Toda recursión sobre input del usuario tiene un parámetro `maxDepth` con valor razonable (≤ 50–100 en la mayoría de casos).
+- [ ] Superar la profundidad máxima retorna un error controlado (400/422), nunca un stack overflow.
+- [ ] En Node.js, recursión con > ~5.000 niveles posibles se implementa con iteración explícita (stack manual, trampolining).
+- [ ] La traversal de grafos/árboles grandes sobre datos de usuario usa `setImmediate` entre batches o se delega a un worker thread.
+- [ ] La deserialización de JSON profundo tiene protección (ver `SEC-HEADERS-040` para limitar profundidad de parsing).
+
+**Banderas rojas:**
+- `function flatten(obj) { for (const k in obj) if (typeof obj[k] === 'object') flatten(obj[k]); }` sin `maxDepth` sobre JSON del usuario.
+- Traversal síncrona de árbol en un handler HTTP sin yield al event loop.
+- Recursión mutua (A llama B, B llama A) sobre datos de tamaño variable sin límite.
+
+---
+
+#### `PERF-BE-074` — Minimizar pasadas e iteraciones sobre colecciones grandes
+**Severidad:** medium · **Tags:** `iteration`, `lazy-evaluation` · **Aplica a:** backend
+
+Una cadena `.filter().map().reduce()` sobre un array realiza múltiples pasadas
+completas y crea arrays intermedios. Con colecciones grandes puede unificarse en
+una sola pasada. Para datasets que superan la RAM disponible, la respuesta es el
+procesamiento en streaming.
+
+**Verificar:**
+- [ ] Cadenas de métodos sobre colecciones de miles de elementos se revisan para unificar cuando el impacto es medible.
+- [ ] Resultados grandes de BD se procesan como cursor/stream en lugar de cargar todo con `findAll()` / `find({})` sin `LIMIT`.
+- [ ] Arrays intermedios innecesarios se evitan: no materializar un `filter` solo para iterar inmediatamente.
+- [ ] Generators / iterables lazy se consideran para pipelines de datos que no caben en memoria.
+- [ ] Intersección de arrays grandes usa Set (O(n+m)) no `.filter(x => arr2.includes(x))` (O(n·m)).
+
+**Banderas rojas:**
+- `await repository.find({})` sin `WHERE`, `LIMIT` ni cursor sobre tabla con crecimiento ilimitado.
+- `.filter(a).filter(b).filter(c)` con tres pasadas cuando `.filter(x => a(x) && b(x) && c(x))` haría una.
+- Carga de todo el resultado en memoria para luego procesar con `.slice(offset, offset+limit)` en la app en lugar de paginar en la query.
+
+---
+
+## I. Serialización y profiling
+
+#### `PERF-BE-080` — Serialización eficiente en hot paths
+**Severidad:** medium · **Tags:** `serialization`, `json` · **Aplica a:** backend
+
+`JSON.stringify` y validación de schema son operaciones costosas en hot paths
+de alto throughput. Para respuestas estructuradas y repetitivas se puede reducir
+el costo con schemas pre-compilados o formatos más eficientes.
+
+**Verificar:**
+- [ ] `JSON.stringify` en hot paths revisado: ¿el resultado puede cachearse si el input no cambia entre requests?
+- [ ] Para respuestas de alto volumen con schema estable: `fast-json-stringify` con schema pre-compilado (2–5× más rápido que `JSON.stringify` genérico).
+- [ ] Los schemas de validación (Ajv, Zod, Joi) se compilan/instancian **una vez al arrancar**, no dentro del handler.
+- [ ] `JSON.parse(JSON.stringify(obj))` como técnica de deep clone se reemplaza por `structuredClone()` o librería dedicada.
+- [ ] Para comunicación interna entre servicios de alto throughput: se evalúa MessagePack o Protocol Buffers si el overhead de JSON es medible con profiling.
+
+**Banderas rojas:**
+- `const validate = new Ajv().compile(schema)` dentro del handler HTTP — recompila en cada request.
+- `JSON.stringify(fullOrmEntity)` donde la entidad incluye relaciones cargadas innecesariamente.
+- Schema Zod con `.parse()` aplicado a decenas de campos en cada request sin caching del resultado.
+
+---
+
+#### `PERF-BE-081` — Profiling antes de optimizar (measurement-first)
+**Severidad:** medium · **Tags:** `profiling`, `flamegraph`, `measurement` · **Aplica a:** backend
+
+Las optimizaciones de rendimiento deben basarse en datos de profiling reales,
+no en intuición. El código complejo "por rendimiento" sin evidencia de bottleneck
+es deuda técnica sin beneficio medible.
+
+**Verificar:**
+- [ ] Antes de optimizar un componente se mide su impacto real: profiling en producción o con load test representativo.
+- [ ] Las herramientas de profiling están documentadas y disponibles para el equipo.
+- [ ] Los benchmarks de micro-optimizaciones críticas viven en el repo (`/benchmarks`) para detectar regresiones futuras.
+- [ ] El flamegraph de CPU identifica los top-3 hotspots antes de invertir tiempo en optimización.
+- [ ] El PR que optimiza por rendimiento incluye el before/after de la métrica relevante (latencia p95, throughput, memoria).
+
+**Banderas rojas:**
+- Comentario `// optimizado para rendimiento` en código complejo sin benchmark adjunto.
+- Micro-optimizaciones (evitar una copia de array) en código que se ejecuta una vez por hora.
+- Reescritura de una función "lenta" sin medir que era el bottleneck real.
+
+**Herramientas:** `clinic.js` · `0x` (flamegraph Node.js) · `py-spy` (Python sin instrumentación) · `go tool pprof` · `async-profiler` (JVM) · `autocannon` / `k6` / `wrk` (load testing).
+
+---
+
 ## Checklist resumen
 
 | ID             | Control                                            | Severidad |
@@ -272,3 +483,10 @@ Hay tracing que permite identificar spans lentos entre servicios.
 | PERF-BE-051    | Queries paginadas con índice                       | high      |
 | PERF-BE-060    | Latencias p50/p95/p99                              | high      |
 | PERF-BE-061    | Tracing distribuido                                | medium    |
+| PERF-BE-070    | Hot paths sin complejidad supralineal              | high      |
+| PERF-BE-071    | Estructuras de datos adecuadas al acceso           | high      |
+| PERF-BE-072    | Construcción de strings en loops                   | medium    |
+| PERF-BE-073    | Recursión acotada y sin bloqueo                    | high      |
+| PERF-BE-074    | Minimizar pasadas sobre colecciones grandes        | medium    |
+| PERF-BE-080    | Serialización eficiente en hot paths               | medium    |
+| PERF-BE-081    | Profiling antes de optimizar                       | medium    |

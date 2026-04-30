@@ -75,7 +75,7 @@ Solo se recoge el dato necesario para la finalidad declarada. No se recolecta
 ## B. Base legal del tratamiento
 
 #### `DATA-LEGAL-001` — Base legal documentada por cada tratamiento
-**Severidad:** critical · **Tags:** `gdpr-art-6` · **Aplica a:** legal · data
+**Severidad:** critical · **Tags:** `gdpr-art-6`, `ley-21719-art-13` · **Aplica a:** legal · data
 
 Cada uso de datos personales tiene una base legal explícita (consentimiento,
 contrato, obligación legal, interés vital, interés público, interés legítimo).
@@ -85,6 +85,14 @@ contrato, obligación legal, interés vital, interés público, interés legíti
 - [ ] La base no se cambia sin re-evaluar ni notificar.
 - [ ] Si es "interés legítimo", hay balancing test documentado.
 - [ ] Tratamientos con datos sensibles tienen base reforzada (consentimiento explícito en la mayoría de regímenes).
+- [ ] **[Chile — Ley 21.719]** Para datos de empleados, la base legal está documentada (típicamente Art. 13 letra b: "ejecución de un contrato del que el titular es parte"). Los tratamientos que van más allá del contrato laboral requieren base adicional.
+
+**Banderas rojas:**
+- Tablas nuevas con PII en el ORM sin actualización del inventario de tratamientos.
+- Tratamiento de datos de salud, biometría o ideología sin consentimiento explícito documentado.
+- Sistema que procesa datos de empleados chilenos sin referencia al Art. 13 Ley 21.719 en el ROPA.
+
+**Referencias:** GDPR Art. 6 · Ley 21.719 Art. 13 (Chile, vigente desde 2024) · LGPD Art. 7 (Brasil).
 
 ---
 

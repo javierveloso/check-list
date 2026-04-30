@@ -3,7 +3,7 @@
 > Medidas de seguridad del tratamiento, retención y borrado programado,
 > transferencias internacionales, incidentes.
 >
-> **Marcos de referencia:** GDPR Arts. 32-34 · ISO 27001 · NIST SP 800-53.
+> **Marcos de referencia:** GDPR Arts. 32-34 · Ley 21.719 Chile (Arts. 14, 15, 16, 22) · ISO 27001 · NIST SP 800-53.
 
 ---
 
@@ -229,6 +229,32 @@ tenant/cliente, no extracción ni reprocesamiento.
 
 ---
 
+#### `DATA-3P-003` — API externa como encargado: DPA e integración documentada
+**Severidad:** critical · **Tags:** `gdpr-art-28`, `ley-21719-art-16` · **Aplica a:** backend · legal
+
+Cuando la aplicación envía datos personales a una API de tercero (software de RRHH,
+nómina, gestión de talento, analítica, etc.) como parte de su proceso principal,
+ese proveedor actúa como encargado (processor). Debe existir un DPA vigente y la
+integración debe estar documentada en el ROPA.
+
+**Verificar:**
+- [ ] Cada integración que transmite PII tiene el proveedor identificado como encargado en el ROPA.
+- [ ] Hay DPA (o cláusulas contractuales equivalentes) firmado con cada proveedor externo que recibe PII.
+- [ ] La información transmitida se limita al mínimo necesario (minimización): solo los campos requeridos por la funcionalidad.
+- [ ] Las credenciales de la API se gestionan como secretos (variables de entorno, Key Vault) y se rotan periódicamente.
+- [ ] Si el proveedor está en otro país, la transferencia tiene base jurídica documentada (decisión de adecuación, SCC, etc.).
+- [ ] **[Chile — Ley 21.719 Art. 16]** El contrato con el encargado establece explícitamente: instrucciones de tratamiento, confidencialidad, medidas de seguridad y destino de los datos al término del contrato.
+
+**Banderas rojas:**
+- Integración con sistema de RRHH/nómina que envía datos de empleados sin DPA documentado.
+- Credenciales de API hardcodeadas en el código fuente o en `.env` sin gestión de secretos dedicada.
+- Datos de empleados o usuarios enviados a un tercero que no aparece en la política de privacidad ni en el ROPA.
+- Payload de sincronización que incluye campos no requeridos por el tercero (email, fecha de nacimiento, domicilio cuando solo se necesita el nombre).
+
+**Referencias:** GDPR Art. 28 · Ley 21.719 Art. 16 (Chile, vigente desde 2024) · LGPD Arts. 37-39 (Brasil).
+
+---
+
 ## Checklist resumen
 
 | ID                | Control                                                | Severidad |
@@ -248,3 +274,4 @@ tenant/cliente, no extracción ni reprocesamiento.
 | DATA-DPIA-001     | DPIA para alto riesgo                                  | high      |
 | DATA-3P-001       | Datos de terceros en documentos                        | high      |
 | DATA-3P-002       | Secreto profesional protegido                          | critical  |
+| DATA-3P-003       | API externa como encargado: DPA documentado            | critical  |

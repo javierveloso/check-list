@@ -309,6 +309,10 @@ El proyecto tiene capas claras (por ejemplo: handlers → services → repositor
 **Banderas rojas:**
 - El modelo de dominio importa `fastapi`, `express`, `django.http`.
 - Query SQL en un handler HTTP sin pasar por un repo.
+- Módulo A importa B, B importa C, C importa A — en TypeScript/Node.js los circular imports hacen que módulos se resuelvan como `undefined` en tiempo de ejecución, generando bugs difíciles de reproducir.
+- ORM entities con referencias cruzadas directas que crean dependencias circulares al cargar (TypeORM, Sequelize).
+
+**Herramientas:** `madge --circular src/` · `dependency-cruiser --validate` · `dpdm --circular` (TypeScript/Node.js) · `pydeps --noshow` (Python).
 
 ---
 

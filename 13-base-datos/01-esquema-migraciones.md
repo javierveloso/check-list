@@ -120,6 +120,59 @@ Cada cambio de schema es una migración commiteada y aplicada automáticamente.
 
 ---
 
+#### `DB-SYNC-001` — ORM auto-sync / DDL automático deshabilitado en producción
+**Severidad:** critical · **Tags:** `data-loss`, `downtime` · **Aplica a:** backend · data
+
+La sincronización automática de schema por el ORM (`synchronize: true` en TypeORM,
+`db.create_all()` sin guard en SQLAlchemy, `autoMigrate` en MikroORM) está
+**deshabilitada** en producción. Solo se aplican cambios a través de migraciones
+revisadas y controladas.
+
+**Verificar:**
+- [ ] La opción de auto-sync está explícitamente en `false` (o ausente) en la configuración de producción.
+- [ ] Existe una carpeta de migraciones con historial completo desde el estado inicial del schema.
+- [ ] El proceso de deploy corre las migraciones **antes** de levantar la app, no durante el arranque del ORM.
+- [ ] La variable de entorno de producción no permite sobreescribir `synchronize` a `true` por error.
+- [ ] Los entornos de dev/test pueden usar auto-sync, pero está gateado por `NODE_ENV` o equivalente.
+
+**Banderas rojas:**
+- `synchronize: true` en el `DataSource` / engine de producción (TypeORM, Sequelize, MikroORM).
+- `db.create_all()` o `Base.metadata.create_all()` en el entrypoint de producción sin guard.
+- Carpeta `migrations/` vacía o inexistente junto a entidades ORM activas.
+- `synchronize: process.env.NODE_ENV !== 'production'` — si `NODE_ENV` no está seteado en prod, se activa auto-sync silenciosamente.
+- Deploy que no incluye ningún paso de `migration:run` antes del `start`.
+
+**Ejemplo de hallazgo:**
+```yaml
+control_id: DB-SYNC-001
+severity: critical
+file: src/config/data-source.ts
+line: 8
+evidence: |
+  export const AppDataSource = new DataSource({
+    type: 'postgres',
+    synchronize: true,   // ← activo en producción
+    entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  })
+  # No existe src/migrations/ ni script de migration:run
+explanation: |
+  TypeORM con synchronize:true aplica ALTER TABLE automáticamente en cada
+  arranque. Un deploy con una entidad mal definida puede borrar columnas con
+  datos productivos sin rollback posible. La ausencia de migraciones impide
+  revisar los cambios de schema en code review.
+suggestion: |
+  1. Cambiar synchronize: false inmediatamente.
+  2. Generar la migración inicial del estado actual:
+       typeorm migration:generate -d src/config/data-source.ts src/migrations/InitialSchema
+  3. Añadir en package.json:
+       "migration:run": "typeorm-ts-node-commonjs migration:run -d src/config/data-source.ts"
+  4. En el deploy, ejecutar migration:run antes de node dist/main.js.
+```
+
+**Referencias:** TypeORM docs — "synchronize warning in production" · Sequelize migrations guide · MikroORM migrations.
+
+---
+
 #### `DB-MIG-002` — Migraciones seguras (expand/contract)
 **Severidad:** critical · **Aplica a:** data
 
@@ -198,6 +251,7 @@ Los devs pueden levantar la BD con datos básicos de ejemplo fácilmente.
 | DB-SCHEMA-005   | Columnas de auditoría                             | medium    |
 | DB-SCHEMA-010   | Política de borrado                               | medium    |
 | DB-MIG-001      | Migraciones versionadas                           | high      |
+| DB-SYNC-001     | ORM auto-sync deshabilitado en producción         | critical  |
 | DB-MIG-002      | Expand/contract                                   | critical  |
 | DB-MIG-003      | Idempotentes                                      | high      |
 | DB-MIG-004      | Review dedicado                                   | high      |
