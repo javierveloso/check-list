@@ -1,0 +1,19 @@
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Reports (generated output)
+reports/
+
+# Cloned repos (working copies)
+repos/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp

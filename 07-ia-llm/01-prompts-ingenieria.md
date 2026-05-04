@@ -15,6 +15,14 @@
 Los prompts largos viven en archivos de texto o YAML versionados, no
 hardcodeados como strings en medio de la lógica.
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`, `**/*.{yaml,yml,txt,md}`
+**Patrones:**
+- `prompt\s*=\s*f?["'`]{1,3}[\s\S]{500,}`     # prompts hardcodeados muy largos en código
+- `system\s*[:=]\s*["'`][\s\S]{300,}`     # system prompt inline
+- `prompts/v\d+/|prompts/.*\.ya?ml|prompts/.*\.txt`     # estructura versionada (deseable)
+- `loadPrompt|getPrompt|prompt_template`     # carga por ID (deseable)
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Directorio `/prompts/` (o similar) con archivos por prompt, en el repo.
 - [ ] Cada prompt tiene metadata: versión, autor, fecha, propósito.
@@ -32,6 +40,14 @@ hardcodeados como strings en medio de la lógica.
 
 El mensaje del sistema (instrucciones, reglas) se separa estrictamente del
 input del usuario y de los datos embebidos, usando los roles que la API ofrece.
+
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `f["']You are.*\{[a-zA-Z_]+\}|f["']System:.*\{user`     # input usuario concatenado al system
+- `role\s*[:=]\s*["']?(system|user|assistant|developer)`     # uso correcto de roles
+- `<document>|<context>|<user_input>`     # delimitadores estructurados
+- `prompt\s*\+\s*user_input|system\s*\+\s*req\.body`     # concatenación insegura
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] `system` / `developer` role contiene las instrucciones.
@@ -53,6 +69,14 @@ input del usuario y de los datos embebidos, usando los roles que la API ofrece.
 Las variables en plantillas de prompt se sanitizan antes de insertarse,
 especialmente cuando provienen de usuarios.
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `Jinja|Handlebars|Mustache|PromptTemplate|ChatPromptTemplate`     # motor de plantillas
+- `escape|sanitize|striptags|html.escape`     # escapado del input
+- `user_input\.length|len\(user_input\)|max_input_chars`     # límites de longitud
+- `\.format\(.*user|f["'].*\{user_input\}`     # interpolación cruda
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Las plantillas usan motor seguro (no string concat).
 - [ ] El input del usuario se escapa o delimita para evitar que "rompa" la estructura del prompt.
@@ -66,6 +90,13 @@ especialmente cuando provienen de usuarios.
 
 Cada cambio de prompt se evalúa contra un set de casos antes de reemplazar la
 versión viva.
+
+**Dónde buscar:** `**/prompts/**`, `**/evals/**`, `**/tests/**`, `package.json`, `requirements.txt`
+**Patrones:**
+- `promptfoo|langsmith|braintrust|helicone|phoenix.*arize`     # frameworks de eval
+- `prompts/v\d+/|prompt_version|version:\s*["']\d+`     # versionado
+- `eval.*prompt|prompt.*test|regression.*prompt`     # tests específicos
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] Hay test set (dataset) con ejemplos representativos y outputs esperados.
@@ -82,6 +113,14 @@ versión viva.
 El prompt explicita rol, tarea, formato de salida, restricciones y ejemplos
 cuando ayudan.
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`, `**/*.{yaml,yml,txt,md,ts,js,py}`
+**Patrones:**
+- `You are a |Eres un|Act as|Tu rol es`     # definición de rol
+- `Output format|Respond with|Format:|Schema:`     # formato esperado
+- `Example:|Ejemplo:|<example>|few.?shot`     # few-shot
+- `If.*no.*data|Si no hay|return.*\{\s*\}`     # caso borde declarado
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Rol definido: "Eres un asistente de X con conocimiento en Y".
 - [ ] Tarea específica: "Extraer las fechas de vencimiento del siguiente contrato".
@@ -96,6 +135,14 @@ cuando ayudan.
 
 Si el output se parsea por código, se exige JSON con schema (vía function
 calling / structured output o instrucción explícita + validación).
+
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `response_format|json_object|structured_output|tool_choice|function_call`     # API de structured output
+- `zod|pydantic|joi|yup|jsonschema|ajv`     # validación de schema
+- `JSON\.parse\(.*\)(?!.*try)|json\.loads\(.*\)(?!.*except)`     # parse sin try/catch
+- `regex.*extract|re\.findall.*response`     # parse frágil con regex
+**Señal de N/A:** el LLM solo se usa para outputs textuales libres (no se parsean por código).
 
 **Verificar:**
 - [ ] Se usa la API de structured output / function calling cuando está disponible.
@@ -115,6 +162,13 @@ calling / structured output o instrucción explícita + validación).
 Para tareas complejas, se pide al modelo que piense paso a paso (visible u
 oculto según la API).
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`
+**Patrones:**
+- `step.?by.?step|think.*before.*answer|chain.?of.?thought|razonamiento`     # CoT explícito
+- `<thinking>|<scratchpad>|reasoning:`     # bloque de razonamiento
+- `extended_thinking|reasoning_effort|o1.*model`     # APIs de reasoning
+**Señal de N/A:** las tareas LLM son simples (clasificación, extracción) y CoT no aporta.
+
 **Verificar:**
 - [ ] En tareas de análisis complejo, el prompt guía razonamiento estructurado.
 - [ ] Se evalúa si el chain-of-thought mejora vs. simplemente pedir la respuesta.
@@ -129,6 +183,14 @@ oculto según la API).
 Cuando se usa RAG (retrieval-augmented generation), se inserta solo el contexto
 relevante y se pide al modelo citar la fuente.
 
+**Dónde buscar:** `**/rag/**`, `**/retrieval/**`, `**/llm/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `embedding|vector_?store|pinecone|weaviate|qdrant|chroma|pgvector`     # stack de RAG
+- `top_?k|similarity_?search|retrieve\(|search\(`     # retrieval
+- `<source[^>]*id|source_id|cite|citation`     # citación
+- `Use only.*provided|solo.*usar.*contexto`     # restricción al contexto
+**Señal de N/A:** el sistema no usa RAG (ningún vector store ni retrieval).
+
 **Verificar:**
 - [ ] El retrieval devuelve top-K chunks relevantes, con identificador.
 - [ ] Los chunks se insertan con metadata (id, fuente) visible al modelo.
@@ -142,6 +204,14 @@ relevante y se pide al modelo citar la fuente.
 
 El prompt total (system + user + context + few-shot) queda dentro del contexto
 máximo del modelo, con margen para la respuesta.
+
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `tiktoken|tokenizers|encode\(.*\)\.length|count_tokens`     # medición de tokens
+- `max_tokens|context_window|max_input_tokens`     # límites declarados
+- `truncate|summarize.*if.*exceeds|chunk_text`     # estrategia de truncado
+- `> 0\.8.*context|alert.*context.*exceeds`     # alertas de capacidad
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] Tokenizer mide la longitud antes de enviar.
@@ -158,6 +228,13 @@ máximo del modelo, con margen para la respuesta.
 Las instrucciones se dan en el idioma del output esperado, o se especifica
 explícitamente el idioma.
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/i18n/**`, `**/locales/**`
+**Patrones:**
+- `Respond in (Spanish|English|Portuguese)|Responde en|language\s*[:=]`     # idioma explícito
+- `locale|i18n|translations`     # gestión de idiomas
+- `prompts\/(en|es|pt|fr)\/|\.lang_(en|es|pt)\.`     # prompts por idioma
+**Señal de N/A:** el sistema soporta un único idioma y no es ambiguo.
+
 **Verificar:**
 - [ ] El prompt define el idioma de la respuesta.
 - [ ] Los ejemplos few-shot son en el idioma correcto.
@@ -170,6 +247,13 @@ explícitamente el idioma.
 
 Para dominios específicos (legal, médico, financiero), se entrega glosario o
 definiciones cuando los términos pueden ambigüarse.
+
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/glossary*`, `**/*.{yaml,yml,md,txt}`
+**Patrones:**
+- `glossary|glosario|definitions|terminology`     # glosario en prompt
+- `Definition:|Términos:|<glossary>`     # bloque estructurado
+- `domain.*(legal|medical|financial|tax|nomina)`     # dominio especializado
+**Señal de N/A:** el dominio es general y no tiene terminología que ambigüe en LLM.
 
 **Verificar:**
 - [ ] Glosario / definiciones clave dentro del prompt cuando aporta.

@@ -15,6 +15,15 @@
 Las llamadas entre servicios (HTTP, gRPC, colas) propagan `trace_id` y `span_id`
 siguiendo W3C Trace Context.
 
+**Dónde buscar:** `**/instrumentation/**`, `**/middleware/**`, `**/*.{ts,js,py,go,java}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `@opentelemetry|opentelemetry-sdk|opentelemetry-api`     # SDK OTel
+- `jaeger|zipkin|datadog-trace|newrelic|applicationinsights`     # tracer alternativo
+- `traceparent|tracestate|b3|x-cloud-trace-context`     # headers de propagación
+- `trace\.context\.attach|propagation\.inject|propagation\.extract`     # propagación explícita
+- `startSpan\(|withSpan\(|tracer\.startActiveSpan`     # creación de spans
+**Señal de N/A:** no hay backend / llamadas entre servicios o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] SDK de OpenTelemetry (o equivalente) instrumentando entrada y salida.
 - [ ] Headers `traceparent` y `tracestate` propagados.
@@ -29,6 +38,15 @@ siguiendo W3C Trace Context.
 Cada span tiene atributos que faciliten diagnóstico (método HTTP, status, query,
 tamaño, errores).
 
+**Dónde buscar:** `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `setAttribute\(|setAttributes\(|span\.set_attribute`     # atributos en span
+- `http\.method|http\.status_code|http\.url|http\.route`     # atributos OTel HTTP
+- `db\.statement|db\.system|db\.operation`     # atributos OTel DB
+- `recordException|span\.record_exception`     # excepción registrada
+- `addEvent\(|span\.add_event`     # eventos dentro del span
+**Señal de N/A:** no hay tracing instrumentado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Spans incluyen: `http.method`, `http.status_code`, `http.url` (normalizada), `db.statement` (sanitizado), `error` (bool/message).
 - [ ] Spans anidados reflejan la estructura de la llamada (child spans).
@@ -42,6 +60,15 @@ tamaño, errores).
 No todas las trazas se guardan (costo); el muestreo preserva las interesantes
 (errores, latencia alta).
 
+**Dónde buscar:** `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`, `**/otel*.{yaml,yml}`, `**/collector*.{yaml,yml}`
+**Patrones:**
+- `TraceIdRatioBased|ParentBased|AlwaysOn|AlwaysOff`     # samplers OTel
+- `sampling_rate|sample_rate|samplingProbability`     # configuración de tasa
+- `tail_sampling|tailSampling`     # tail sampling activo
+- `error_sampling|sample_on_error`     # forzar guardado en error
+- `OTEL_TRACES_SAMPLER`     # variable de entorno OTel
+**Señal de N/A:** no hay tracing instrumentado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Head sampling razonable (ej: 10% base).
 - [ ] Tail sampling si es posible: se guardan todas las trazas con error o latencia > umbral.
@@ -53,6 +80,15 @@ No todas las trazas se guardan (costo); el muestreo preserva las interesantes
 **Severidad:** high · **Aplica a:** backend · observability
 
 Desde un log se puede saltar a la traza asociada, y viceversa.
+
+**Dónde buscar:** `**/logger*`, `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `trace_id|trace\.id|traceId`     # trace_id incluido en log
+- `span_id|span\.id|spanId`     # span_id incluido
+- `getActiveSpan|trace\.get_current_span|currentSpan`     # extracción de contexto activo
+- `LoggingInstrumentation|opentelemetry-instrumentation-logging`     # auto-instrumentación
+- `logger\.\w+\([^)]*ctx\b`     # logger recibe contexto
+**Señal de N/A:** no hay tracing instrumentado en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Los logs incluyen `trace_id` y `span_id`.
@@ -69,6 +105,15 @@ Desde un log se puede saltar a la traza asociada, y viceversa.
 Cada request tiene un identificador único que atraviesa la app y aparece en
 logs, métricas, trazas y respuestas.
 
+**Dónde buscar:** `**/middleware/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `X-Request-Id|X-Correlation-Id|x-request-id`     # header estándar
+- `request[_-]?id|correlation[_-]?id`     # variable interna
+- `uuid|nanoid|crypto\.randomUUID`     # generación de ID
+- `setHeader\([\"']X-Request-Id`     # eco en respuesta
+- `req\.id\s*=|ctx\.requestId\s*=`     # asignación al contexto del request
+**Señal de N/A:** no hay backend / endpoints HTTP en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] El servidor genera `X-Request-Id` si el cliente no lo envió (o respeta el del cliente).
 - [ ] Aparece en headers de respuesta.
@@ -83,6 +128,15 @@ logs, métricas, trazas y respuestas.
 **Severidad:** high · **Aplica a:** observability
 
 Cada alerta tiene un responsable claro, un runbook y es verificable.
+
+**Dónde buscar:** `**/alerts*.{yaml,yml,json}`, `**/*.alert.{yml,yaml}`, `**/prometheus/**`, `**/monitoring/**`
+**Patrones:**
+- `runbook_url|runbook:|playbook:`     # link a runbook
+- `severity:\s*(critical|high|warning|info)`     # severidad declarada
+- `team:|owner:|service_owner:`     # ownership
+- `summary:|description:|annotations:`     # campos descriptivos
+- `expr:\s*[\"']?up\s*==\s*0[\"']?\s*$`     # alerta genérica sin contexto (anti-señal)
+**Señal de N/A:** no hay archivos de alertas en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Cada alerta documenta: qué significa, cómo validar, cómo mitigar.
@@ -102,6 +156,15 @@ Cada alerta tiene un responsable claro, un runbook y es verificable.
 
 Alertas críticas van a on-call; informativas a canal no-bloqueante.
 
+**Dónde buscar:** `**/alerts*.{yaml,yml,json}`, `**/alertmanager*.{yaml,yml}`, `**/monitoring/**`
+**Patrones:**
+- `pagerduty|opsgenie|victorops`     # canal on-call
+- `slack|teams|webhook`     # canales no-urgentes
+- `routes:|receiver:|match:`     # routing por severidad (alertmanager)
+- `severity:\s*(critical|warning|info)`     # severidades distintas
+- `escalation|escalate_after`     # escalation ladder
+**Señal de N/A:** no hay archivos de alertas en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Critical → PagerDuty/Opsgenie/phone call.
 - [ ] High → Slack con mención al oncall.
@@ -115,6 +178,14 @@ Alertas críticas van a on-call; informativas a canal no-bloqueante.
 
 Se alerta sobre lo que afecta al usuario (latencia alta, error rate), no sobre
 cada métrica interna.
+
+**Dónde buscar:** `**/alerts*.{yaml,yml,json}`, `**/*.alert.{yml,yaml}`, `**/prometheus/**`
+**Patrones:**
+- `error_rate|errorRate|http_requests.*5\d\d`     # alerta sobre síntoma user-facing
+- `latency_p9[59]|histogram_quantile\(0\.9[59]`     # latencia percentil
+- `slo|sli|burn_rate`     # alerta sobre SLO
+- `cpu_usage|memory_usage|disk_usage`\s.*alert     # alerta puramente sobre causa (anti-señal si es la única)
+**Señal de N/A:** no hay archivos de alertas en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Alerta primaria: SLO burn / user-facing metrics.
@@ -130,6 +201,15 @@ cada métrica interna.
 
 El servicio expone dos endpoints distintos: liveness (el proceso está vivo) y
 readiness (está listo para atender tráfico).
+
+**Dónde buscar:** `**/*.{ts,js,py,go,java}`, `**/k8s/**`, `**/helm/**`, `**/*.{yaml,yml}`
+**Patrones:**
+- `/healthz|/livez|/readyz|/health`     # endpoints estándar
+- `livenessProbe|readinessProbe|startupProbe`     # probes K8s
+- `app\.get\([\"']/(health|live|ready)`     # registro del endpoint
+- `db\.ping\(\)|cache\.ping\(\)`     # verifica deps en readiness
+- `return\s+\{\s*status:\s*[\"']ok[\"']\s*\}`     # health cosmético (anti-señal)
+**Señal de N/A:** no hay backend / endpoints HTTP en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] `GET /healthz` / `/livez` liveness: respuesta rápida, no toca dependencias.
@@ -149,6 +229,15 @@ readiness (está listo para atender tráfico).
 
 Se miden tiempos y errores de las dependencias externas (BD, APIs terceros).
 
+**Dónde buscar:** `**/instrumentation/**`, `**/middleware/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `dependency_duration|external_call_duration|upstream_latency`     # latencia por dep
+- `circuit[_-]?breaker|opossum|resilience4j|hystrix`     # circuit breaker
+- `axios\.interceptors|fetch.*wrapper|httpClient.*metrics`     # instrumentación de cliente HTTP
+- `db\.query.*Histogram|prisma\.\$on\([\"']query`     # latencia DB instrumentada
+- `dependency:|target:|upstream:`     # labels para identificar dep
+**Señal de N/A:** no hay llamadas a dependencias externas en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Latencia y error rate por dependencia.
 - [ ] Alertas si una dependencia está degradada.
@@ -163,6 +252,11 @@ Se miden tiempos y errores de las dependencias externas (BD, APIs terceros).
 
 Cada alerta crítica enlaza un runbook accionable.
 
+**Dónde buscar:** `**/runbooks/**`, `**/docs/**`, `**/*.md`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+**Señal de N/A:** no hay backend / servicios productivos en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Runbooks versionados (repo/wiki).
 - [ ] Incluyen: síntomas, diagnóstico, mitigación, escalation.
@@ -174,6 +268,11 @@ Cada alerta crítica enlaza un runbook accionable.
 **Severidad:** medium · **Aplica a:** process
 
 Cada incidente significativo produce un post-mortem con lecciones y acciones.
+
+**Dónde buscar:** `**/postmortems/**`, `**/incidents/**`, `**/docs/**`, `**/*.md`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+**Señal de N/A:** no hay backend / servicios productivos en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Plantilla usada consistentemente.

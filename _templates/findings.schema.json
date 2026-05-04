@@ -1,0 +1,227 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://checklist-v2/findings.schema.json",
+  "title": "checklist-v2 findings",
+  "description": "Schema for the machine-readable output of a checklist-v2 audit run. See REPORTING_GUIDE.md for usage.",
+  "type": "object",
+  "required": ["metadata", "summary", "findings", "passed_controls", "na_controls", "needs_human"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "metadata":         { "$ref": "#/$defs/Metadata" },
+    "summary":          { "$ref": "#/$defs/Summary" },
+    "findings":         { "type": "array", "items": { "$ref": "#/$defs/Finding" } },
+    "passed_controls":  { "type": "array", "items": { "$ref": "#/$defs/PassedControl" } },
+    "na_controls":      { "type": "array", "items": { "$ref": "#/$defs/NaControl" } },
+    "needs_human":      { "type": "array", "items": { "$ref": "#/$defs/NeedsHumanControl" } },
+    "other_findings":   { "type": "array", "items": { "$ref": "#/$defs/OtherFinding" } }
+  },
+  "$defs": {
+    "Severity": {
+      "type": "string",
+      "enum": ["critical", "high", "medium", "low", "info"]
+    },
+    "Verdict": {
+      "type": "string",
+      "enum": ["passed", "failed", "na", "needs_human"]
+    },
+    "Confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "Mode": {
+      "type": "string",
+      "enum": ["full-audit", "pr-review", "targeted-scan"]
+    },
+    "MergeAction": {
+      "type": "string",
+      "enum": ["block_merge", "request_changes", "comment", "approve"]
+    },
+    "FixComplexity": {
+      "type": "string",
+      "enum": ["trivial", "small", "medium", "large"]
+    },
+    "FixKind": {
+      "type": "string",
+      "enum": ["config", "code", "dependency", "infra", "docs", "process"]
+    },
+    "ControlId": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9]{1,5}-[A-Z][A-Z0-9]{1,8}-[0-9]{3}$",
+      "description": "Format: <CAT>-<SUBCAT>-<NNN>, e.g. SEC-AUTH-002"
+    },
+    "FindingId": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16,64}$",
+      "description": "Stable hash: sha256(control_id + file + line + first 80 chars of evidence_snippet), truncated."
+    },
+    "StackAreas": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "has_backend":         { "type": "boolean" },
+        "has_frontend":        { "type": "boolean" },
+        "has_api":             { "type": "boolean" },
+        "has_db":              { "type": "boolean" },
+        "has_iac":             { "type": "boolean" },
+        "has_ci":              { "type": "boolean" },
+        "has_llm":             { "type": "boolean" },
+        "has_mobile":          { "type": "boolean" },
+        "has_data_pipelines":  { "type": "boolean" }
+      }
+    },
+    "StackSignal": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "languages":       { "type": "array", "items": { "type": "string" } },
+        "frameworks":      { "type": "array", "items": { "type": "string" } },
+        "areas":           { "$ref": "#/$defs/StackAreas" },
+        "deploy_targets":  { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Metadata": {
+      "type": "object",
+      "required": ["repo", "checklist_version", "generated_at", "mode", "stack_signal", "controls_total", "controls_in_scope", "controls_evaluated"],
+      "additionalProperties": false,
+      "properties": {
+        "repo":               { "type": "string" },
+        "commit":             { "type": ["string", "null"] },
+        "branch":             { "type": ["string", "null"] },
+        "checklist_version":  { "type": "string" },
+        "generated_at":       { "type": "string", "format": "date-time" },
+        "mode":               { "$ref": "#/$defs/Mode" },
+        "stack_signal":       { "$ref": "#/$defs/StackSignal" },
+        "controls_total":     { "type": "integer", "minimum": 0 },
+        "controls_in_scope":  { "type": "integer", "minimum": 0 },
+        "controls_evaluated": { "type": "integer", "minimum": 0 },
+        "controls_skipped":   {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["control_id", "reason"],
+            "additionalProperties": false,
+            "properties": {
+              "control_id": { "$ref": "#/$defs/ControlId" },
+              "reason":     { "type": "string" }
+            }
+          }
+        },
+        "agents":             { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Summary": {
+      "type": "object",
+      "required": ["by_verdict", "by_severity_failed", "merge_action"],
+      "additionalProperties": false,
+      "properties": {
+        "by_verdict": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "passed":      { "type": "integer", "minimum": 0 },
+            "failed":      { "type": "integer", "minimum": 0 },
+            "na":          { "type": "integer", "minimum": 0 },
+            "needs_human": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "by_severity_failed": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "critical": { "type": "integer", "minimum": 0 },
+            "high":     { "type": "integer", "minimum": 0 },
+            "medium":   { "type": "integer", "minimum": 0 },
+            "low":      { "type": "integer", "minimum": 0 },
+            "info":     { "type": "integer", "minimum": 0 }
+          }
+        },
+        "by_category_failed": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "merge_action": { "$ref": "#/$defs/MergeAction" }
+      }
+    },
+    "DiffSuggestion": {
+      "type": "object",
+      "required": ["format", "patch"],
+      "additionalProperties": false,
+      "properties": {
+        "format": { "type": "string", "enum": ["unified"] },
+        "patch":  { "type": "string", "minLength": 1 }
+      }
+    },
+    "Finding": {
+      "type": "object",
+      "required": [
+        "finding_id", "control_id", "severity", "verdict", "confidence",
+        "file", "evidence_snippet", "explanation", "suggestion",
+        "fix_complexity", "fix_kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "finding_id":       { "$ref": "#/$defs/FindingId" },
+        "control_id":       { "$ref": "#/$defs/ControlId" },
+        "severity":         { "$ref": "#/$defs/Severity" },
+        "verdict":          { "type": "string", "enum": ["failed", "needs_human"] },
+        "confidence":       { "$ref": "#/$defs/Confidence" },
+        "file":             { "type": ["string", "null"] },
+        "line":             { "type": ["integer", "null"], "minimum": 1 },
+        "line_end":         { "type": ["integer", "null"], "minimum": 1 },
+        "evidence_snippet": { "type": "string", "minLength": 1 },
+        "explanation":      { "type": "string", "minLength": 1 },
+        "suggestion":       { "type": "string", "minLength": 1 },
+        "fix_complexity":   { "$ref": "#/$defs/FixComplexity" },
+        "fix_kind":         { "$ref": "#/$defs/FixKind" },
+        "diff_suggestion":  { "oneOf": [{ "$ref": "#/$defs/DiffSuggestion" }, { "type": "null" }] },
+        "related_findings": { "type": "array", "items": { "$ref": "#/$defs/FindingId" } },
+        "tags":             { "type": "array", "items": { "type": "string" } },
+        "owners":           { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "PassedControl": {
+      "type": "object",
+      "required": ["control_id", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "control_id": { "$ref": "#/$defs/ControlId" },
+        "evidence":   { "type": "string", "minLength": 1 }
+      }
+    },
+    "NaControl": {
+      "type": "object",
+      "required": ["control_id", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "control_id": { "$ref": "#/$defs/ControlId" },
+        "reason":     { "type": "string", "minLength": 1 }
+      }
+    },
+    "NeedsHumanControl": {
+      "type": "object",
+      "required": ["control_id", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "control_id": { "$ref": "#/$defs/ControlId" },
+        "file":       { "type": ["string", "null"] },
+        "line":       { "type": ["integer", "null"], "minimum": 1 },
+        "reason":     { "type": "string", "minLength": 1 }
+      }
+    },
+    "OtherFinding": {
+      "type": "object",
+      "required": ["title", "evidence_snippet", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "title":               { "type": "string", "minLength": 1 },
+        "file":                { "type": ["string", "null"] },
+        "line":                { "type": ["integer", "null"], "minimum": 1 },
+        "evidence_snippet":    { "type": "string", "minLength": 1 },
+        "rationale":           { "type": "string", "minLength": 1 },
+        "severity_suggested":  { "$ref": "#/$defs/Severity" },
+        "proposed_control_id": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

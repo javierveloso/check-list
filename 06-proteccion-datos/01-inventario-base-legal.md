@@ -16,6 +16,13 @@ Existe un documento (registro de actividades de tratamiento) que enumera qué
 datos personales se recogen, con qué finalidad, dónde se almacenan y por
 cuánto tiempo.
 
+**Dónde buscar:** `ROPA.{md,xlsx}`, `privacy.md`, `**/migrations/**`, `**/*.sql`, `**/users/**`, `**/customers/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `\b(email|rut|dni|nif|ssn|phone|address|birthdate|geolocation|ip)\b`     # campos PII en migraciones/schema
+- `CREATE TABLE.*(users|customers|patients|employees)`     # tablas con PII a inventariar
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Inventario vivo (versionado) con todos los datos personales procesados.
 - [ ] Por cada dato: propósito, base legal, retención, destinatarios, transferencias.
@@ -34,6 +41,13 @@ cuánto tiempo.
 Los datos personales se clasifican en niveles (p. ej.: pública, interna,
 confidencial, sensible) con reglas operacionales por nivel.
 
+**Dónde buscar:** `**/migrations/**`, `**/*.sql`, `**/models/**`, `**/entities/**`, `ROPA.{md,xlsx}`
+**Patrones:**
+- `@(Sensitive|PII|Confidential|Classification)`     # decoradores/anotaciones de clasificación
+- `\b(health|medical|biometric|religion|sexuality|ideology|race|ethnicity)\b`     # campos de categoría especial
+- `comment.*--\s*(PII|sensitive|confidential)`     # comentarios SQL marcando clasificación
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Niveles definidos y documentados.
 - [ ] Cada campo/tabla está etiquetado en el inventario.
@@ -48,6 +62,13 @@ confidencial, sensible) con reglas operacionales por nivel.
 Existe un diagrama/documento que muestra por dónde pasan los datos personales:
 entrada, almacenamiento, procesamiento, exportación.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `privacy.md`, `**/integrations/**`, `**/webhooks/**`
+**Patrones:**
+- `\b(fetch|axios|requests|http\.post)\b.*(analytics|segment|mixpanel|amplitude|datadog)`     # exportación a 3os no documentada
+- `import.*(openai|anthropic|stripe|sendgrid|twilio|hubspot)`     # procesadores externos a mapear
+- `webhook|callback_url|external_api`     # flujos hacia fuera
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Diagramas actualizados por flujo crítico (ej: signup, checkout, análisis).
 - [ ] Cada "salida a tercero" (analytics, LLM, payment processor) está registrada.
@@ -60,6 +81,13 @@ entrada, almacenamiento, procesamiento, exportación.
 
 Solo se recoge el dato necesario para la finalidad declarada. No se recolecta
 "por si acaso".
+
+**Dónde buscar:** `**/forms/**`, `**/signup/**`, `**/*.{ts,js,py}`, `**/migrations/**`
+**Patrones:**
+- `\b(birthdate|dob|gender|address|phone|geolocation|ip)\b.*\b(required|notNull)`     # campos sensibles obligatorios sin justificación
+- `body\s*[:=]\s*req\.body`     # capturar body completo sin filtrar
+- `JSON\.stringify\(req\.body\)|log.*request\.body`     # logueo de payload entero
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Cada campo en formularios tiene justificación documentada.
@@ -79,6 +107,13 @@ Solo se recoge el dato necesario para la finalidad declarada. No se recolecta
 
 Cada uso de datos personales tiene una base legal explícita (consentimiento,
 contrato, obligación legal, interés vital, interés público, interés legítimo).
+
+**Dónde buscar:** `ROPA.{md,xlsx}`, `privacy.md`, `**/migrations/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `\b(legal_basis|lawful_basis|base_legal|consent_basis)\b`     # campo de base legal en código/schema
+- `transfer.*third.*party|share.*partner`     # transferencias a 3os sin base declarada
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] El inventario indica la base legal por tratamiento.
@@ -107,6 +142,14 @@ Cuando la base es consentimiento, es:
 - **Inequívoco**: acción afirmativa clara.
 - **Revocable**: tan fácil de revocar como de dar.
 
+**Dónde buscar:** `**/consent*`, `**/signup/**`, `**/*.{ts,js,py,jsx,tsx}`, `**/migrations/**`
+**Patrones:**
+- `checked\s*=\s*(true|"true"|\{true\})`     # checkboxes pre-marcados de consentimiento
+- `consent.*timestamp|consent_version|consented_at`     # almacenamiento de consentimiento (deseable)
+- `(accept|agree).*all|agree.*everything|by\s+using.*you\s+accept`     # aceptación bundle/coercitiva
+- `revoke|withdraw.*consent|opt[_-]?out`     # canal de revocación
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Consentimientos separados por propósito (ej: comunicaciones promocionales vs operativas).
 - [ ] Texto claro, sin oscuridad legalesa.
@@ -128,6 +171,13 @@ Si los datos del usuario se procesan con modelos de IA (posiblemente con
 proveedores externos), se explica y se recoge consentimiento cuando la base
 legal lo exige.
 
+**Dónde buscar:** `privacy.md`, `**/llm/**`, `**/ai/**`, `**/consent*`, `**/*.{ts,js,py}`
+**Patrones:**
+- `import.*(openai|anthropic|@langchain|@google/generative-ai|cohere|mistral)`     # uso de LLM provider
+- `ai_consent|llm_consent|opt.*ai|ai.*processing`     # consentimiento específico para IA
+- `train.*model|opt.*training`     # uso para entrenamiento + opt-out
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Política de privacidad menciona los procesadores de IA utilizados.
 - [ ] Si los datos cruzan fronteras vía IA, se documenta.
@@ -143,6 +193,13 @@ legal lo exige.
 Si el servicio está disponible a menores, se cumple la ley aplicable (13-16
 años varía por jurisdicción) y se requiere consentimiento parental.
 
+**Dónde buscar:** `**/signup/**`, `**/forms/**`, `**/*.{ts,js,py,jsx,tsx}`
+**Patrones:**
+- `\b(age|birthdate|dob)\b.*(verify|check|gate)`     # verificación de edad
+- `parental.*consent|guardian.*consent|coppa`     # consentimiento parental
+- `min.*age|age.*minimum|under.?13|under.?16`     # umbrales de edad
+**Señal de N/A:** el servicio no está dirigido a menores y la ToS lo declara explícitamente.
+
 **Verificar:**
 - [ ] Mecanismo para identificar menores.
 - [ ] Consentimiento parental verificable cuando se recolectan datos de menores.
@@ -157,6 +214,13 @@ años varía por jurisdicción) y se requiere consentimiento parental.
 
 Existe política de privacidad con toda la información requerida, en lenguaje
 comprensible y en el idioma del usuario.
+
+**Dónde buscar:** `privacy.md`, `**/privacy*`, `**/legal/**`, `public/**`, `pages/legal/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `last[_-]?updated|version|effective.*date`     # fecha de actualización en el doc
+- `dpo|data.protection.officer|delegado.*proteccion`     # contacto del DPO
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Identidad del responsable y forma de contacto (DPO si aplica).
@@ -175,6 +239,13 @@ comprensible y en el idioma del usuario.
 Al recolectar datos, el usuario ve un aviso just-in-time con resumen y link a
 la política.
 
+**Dónde buscar:** `**/forms/**`, `**/signup/**`, `**/*.{tsx,jsx,vue,svelte}`, `**/cookie*`
+**Patrones:**
+- `cookie.*banner|cookie.*consent|cookie.*notice`     # banner de cookies
+- `<a[^>]*href=["'][^"']*privacy`     # link a política
+- `accept.*all.*cookie|reject.*cookie`     # paridad accept/reject
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Formularios con aviso corto + link a política.
 - [ ] Tooltips explican por qué se pide un dato sensible.
@@ -189,6 +260,13 @@ la política.
 
 La organización tiene claro qué datos procesa como responsable (controller)
 y qué como encargado (processor) de otro.
+
+**Dónde buscar:** `ROPA.{md,xlsx}`, `DPA*`, `privacy.md`, `**/legal/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `controller|processor|sub.?processor|encargado|responsable`     # roles definidos
+- `dpa\.|data.processing.agreement`     # acuerdos firmados
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Roles documentados por flujo de datos.
