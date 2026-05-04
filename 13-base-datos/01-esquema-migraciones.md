@@ -11,6 +11,15 @@
 
 Las tablas y columnas siguen una convención estable.
 
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/models/**`, `**/*.{sql,prisma}`, `**/*.entity.{ts,js}`, `**/schema.prisma`
+**Patrones:**
+- `CREATE\s+TABLE\s+["`]?[A-Z]\w*[A-Z]`     # tablas con CamelCase / PascalCase mezclado
+- `(\b\w+_\w+\b).*\b([a-z]+[A-Z]\w*)\b`     # mismo archivo mezclando snake_case y camelCase
+- `@Column\s*\(\s*\{\s*name:\s*['"]`     # columnas con nombre explícito (revisar consistencia)
+- `CONSTRAINT\s+\w+\s+(FOREIGN\s+KEY|CHECK|UNIQUE)`     # constraints con nombre explícito
+- `FOREIGN\s+KEY\s*\([^)]+\)\s+REFERENCES`     # FKs (verificar naming `<tabla>_id`)
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] Convención de casing (snake_case típicamente) aplicada a tablas y columnas.
 - [ ] Tablas en plural (o singular) consistente.
@@ -24,6 +33,16 @@ Las tablas y columnas siguen una convención estable.
 **Severidad:** high · **Aplica a:** data
 
 Cada columna tiene el tipo que refleja su dominio.
+
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/models/**`, `**/*.{sql,prisma}`, `**/*.entity.{ts,js}`, `**/schema.prisma`
+**Patrones:**
+- `\b(FLOAT|REAL|DOUBLE)\b`     # tipos float (peligroso para dinero)
+- `(price|amount|balance|total|cost)\s*\w*\s+(FLOAT|REAL|DOUBLE|float|number)`     # dinero como float
+- `TIMESTAMP(?!\s+WITH\s+TIME\s+ZONE)`     # timestamp sin TZ
+- `VARCHAR\s*\(\s*255\s*\)`     # VARCHAR(255) por defecto
+- `CHAR\s*\(\s*1\s*\)|TINYINT\s*\(\s*1\s*\)`     # boolean simulado
+- `@Column\s*\(\s*\{\s*type:\s*['"]float['"]`     # ORM declarando float
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
 
 **Verificar:**
 - [ ] Strings con longitudes acotadas cuando aplica (`VARCHAR(n)` vs `TEXT`).
@@ -46,6 +65,16 @@ Cada columna tiene el tipo que refleja su dominio.
 Constraints de unicidad, obligatoriedad, rango, foreign keys viven en la BD,
 no solo en la aplicación.
 
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/models/**`, `**/*.{sql,prisma}`, `**/*.entity.{ts,js}`, `**/schema.prisma`
+**Patrones:**
+- `CREATE\s+TABLE[\s\S]{0,2000}\)\s*;`     # tabla completa (revisar NOT NULL/UNIQUE)
+- `\b\w+_id\s+\w+(?!\s+REFERENCES)`     # columna *_id sin REFERENCES (FK ausente)
+- `email\s+\w+(?!.*UNIQUE)`     # email sin UNIQUE
+- `CHECK\s*\(`     # CHECK constraints (presencia)
+- `@Column\s*\(\s*\{[^}]*nullable:\s*true`     # nullable explícito (revisar si corresponde)
+- `@Unique|UNIQUE\s*\(`     # unicidad declarada
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] `NOT NULL` donde corresponde.
 - [ ] `UNIQUE` en campos de identidad (email, username, slug).
@@ -64,6 +93,14 @@ no solo en la aplicación.
 El schema está razonablemente normalizado; la desnormalización, cuando se
 hace, es consciente.
 
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/models/**`, `**/*.{sql,prisma}`, `**/*.entity.{ts,js}`, `**/schema.prisma`
+**Patrones:**
+- `\b(country|state|city|currency|language)\s+VARCHAR`     # datos de catálogo como string libre (deberían ser FK)
+- `\w+_(json|jsonb|data)\s+(JSON|JSONB)`     # JSON blobs (revisar si oculta normalización)
+- `(addr|address)_(street|city|zip|country)\s+\w+,[\s\S]{0,500}(addr|address)_(street|city|zip|country)`     # bloques repetidos en múltiples tablas
+- `enum\s*\(['"]\w+['"]`     # enums hardcodeados (vs tabla lookup)
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] No hay campos repetidos sin razón.
 - [ ] Datos "enlatados" (dirección del país) viven en catálogos.
@@ -77,6 +114,15 @@ hace, es consciente.
 
 Las tablas relevantes tienen `created_at`, `updated_at`, y cuando el dominio lo
 exige, `created_by`/`updated_by`.
+
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/models/**`, `**/*.{sql,prisma}`, `**/*.entity.{ts,js}`, `**/schema.prisma`
+**Patrones:**
+- `created_at|createdAt|@CreateDateColumn`     # presencia de created_at
+- `updated_at|updatedAt|@UpdateDateColumn`     # presencia de updated_at
+- `deleted_at|deletedAt|@DeleteDateColumn`     # soft-delete
+- `created_by|updated_by|createdBy|updatedBy`     # auditoría de usuario
+- `CREATE\s+TABLE\s+\w+[\s\S]{0,2000}\)\s*;`     # cada tabla (verificar columnas de auditoría)
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
 
 **Verificar:**
 - [ ] `created_at` nunca cambia.
@@ -93,6 +139,15 @@ exige, `created_by`/`updated_by`.
 
 Por tabla se decide: hard delete, soft delete + TTL, o solo anonimización.
 
+**Dónde buscar:** `**/migrations/**`, `**/entities/**`, `**/repositories/**`, `**/services/**`, `**/*.{sql,prisma,ts,js,py,go,java,cs}`
+**Patrones:**
+- `deleted_at|deletedAt|is_deleted|isDeleted`     # campos de soft-delete
+- `@DeleteDateColumn|paranoid:\s*true`     # ORM con soft-delete
+- `\bDELETE\s+FROM\b`     # hard deletes (revisar política)
+- `(anonymize|anonymise|scrub|redact)`     # anonimización
+- `\.where\(\s*\{[^}]*deleted`     # filtrado explícito de soft-deletes
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] Decisión documentada por tipo de dato.
 - [ ] Soft-deletes se filtran por defecto en queries.
@@ -107,6 +162,14 @@ Por tabla se decide: hard delete, soft delete + TTL, o solo anonimización.
 **Severidad:** high · **Aplica a:** data · ci-cd
 
 Cada cambio de schema es una migración commiteada y aplicada automáticamente.
+
+**Dónde buscar:** `**/migrations/**`, `**/db/**`, `**/database/**`, `**/*.{sql,prisma}`, `**/package.json`, `**/alembic.ini`, `**/flyway.conf`
+**Patrones:**
+- `(typeorm|prisma|sequelize|mongoose|alembic|flyway|liquibase|knex|diesel|goose)`     # herramienta de migration en deps
+- `^\d{4,14}[_-]\w+\.(sql|ts|js|py)$`     # naming determinista (timestamp_descripcion)
+- `migration:run|migrate\s+up|alembic\s+upgrade|flyway\s+migrate`     # comando de aplicación de migraciones
+- `\b(schema\.prisma|migrations/)\b`     # carpetas/archivos de migration esperados
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
 
 **Verificar:**
 - [ ] Herramienta de migration (Alembic, Flyway, Liquibase, Prisma Migrate, Diesel, etc.).
@@ -127,6 +190,16 @@ La sincronización automática de schema por el ORM (`synchronize: true` en Type
 `db.create_all()` sin guard en SQLAlchemy, `autoMigrate` en MikroORM) está
 **deshabilitada** en producción. Solo se aplican cambios a través de migraciones
 revisadas y controladas.
+
+**Dónde buscar:** `**/config/**`, `**/data-source*`, `**/ormconfig*`, `**/*.{ts,js,py,yaml,yml,json}`, `**/schema.prisma`
+**Patrones:**
+- `synchronize\s*:\s*true`     # TypeORM synchronize en true
+- `synchronize\s*:\s*process\.env\.NODE_ENV\s*!==\s*['"]production['"]`     # peligroso si NODE_ENV no se setea
+- `db\.create_all\(\)|Base\.metadata\.create_all\(`     # SQLAlchemy create_all sin guard
+- `autoMigrate|migrationsAutoRun|alter\s*:\s*true`     # MikroORM/Sequelize auto-sync
+- `force\s*:\s*true`     # Sequelize force (DROP+CREATE)
+- `db\.AutoMigrate\(`     # GORM AutoMigrate
+**Señal de N/A:** no hay ORM en el stack (sin `typeorm|prisma|sequelize|mongoose|sqlalchemy|mikroorm|gorm|hibernate` en deps).
 
 **Verificar:**
 - [ ] La opción de auto-sync está explícitamente en `false` (o ausente) en la configuración de producción.
@@ -179,6 +252,15 @@ suggestion: |
 Los cambios incompatibles se hacen en pasos que permiten coexistencia de N y
 N+1.
 
+**Dónde buscar:** `**/migrations/**`, `**/db/**`, `**/*.{sql,ts,js,py}`
+**Patrones:**
+- `DROP\s+(COLUMN|TABLE)`     # drops directos (deberían ir en release posterior)
+- `ALTER\s+TABLE\s+\w+\s+RENAME\s+(COLUMN\s+)?\w+\s+TO`     # rename directo (anti-patrón)
+- `ALTER\s+(TABLE\s+\w+\s+)?ALTER\s+COLUMN\s+\w+\s+TYPE`     # cambio de tipo directo
+- `ADD\s+COLUMN\s+\w+\s+\w+\s+NOT\s+NULL(?!\s+DEFAULT)`     # NOT NULL sin default ni backfill
+- `DROP\s+CONSTRAINT`     # drop constraint (validar coexistencia)
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] Añadir columna: nullable o con default; backfill asíncrono si aplica.
 - [ ] Rename: crear nueva, duplicar writes, migrar reads, eliminar la antigua (al menos 2 releases).
@@ -193,6 +275,15 @@ N+1.
 
 Las migraciones manejan correctamente re-ejecutar y casos previos ambiguos.
 
+**Dónde buscar:** `**/migrations/**`, `**/db/**`, `**/*.{sql,ts,js,py}`
+**Patrones:**
+- `IF\s+NOT\s+EXISTS|IF\s+EXISTS`     # checks de idempotencia
+- `CREATE\s+TABLE\s+(?!IF\s+NOT\s+EXISTS)`     # CREATE TABLE sin guard
+- `DROP\s+(TABLE|COLUMN|INDEX)\s+(?!IF\s+EXISTS)`     # DROP sin guard
+- `ALTER\s+TABLE\s+\w+\s+ADD\s+COLUMN\s+(?!IF\s+NOT\s+EXISTS)`     # ADD COLUMN sin guard
+- `BEGIN\b[\s\S]{0,5000}\bCOMMIT\b`     # uso de transacción explícita
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
+
 **Verificar:**
 - [ ] `CREATE TABLE IF NOT EXISTS`, `ADD COLUMN IF NOT EXISTS` donde aplica.
 - [ ] Comprobaciones antes de drop/alter para evitar fallos ambiguos.
@@ -204,6 +295,14 @@ Las migraciones manejan correctamente re-ejecutar y casos previos ambiguos.
 **Severidad:** high · **Aplica a:** process
 
 Migraciones = cambios con potencial destructivo. Requieren review específico.
+
+**Dónde buscar:** `**/migrations/**`, `**/.github/CODEOWNERS`, `**/.github/workflows/**`, `**/docs/**`
+**Patrones:**
+- `migrations/\s+@\w+`     # CODEOWNERS apunta a reviewers de migraciones
+- `(DROP|TRUNCATE|DELETE\s+FROM|ALTER\s+TABLE)`     # operaciones potencialmente destructivas a revisar
+- `EXPLAIN(\s+ANALYZE)?`     # EXPLAIN documentado en migration
+- `dry[_-]?run|--dry-run`     # dry-run en CI/staging
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
 
 **Verificar:**
 - [ ] Reviewer con contexto de datos (no solo código).
@@ -219,6 +318,15 @@ Migraciones = cambios con potencial destructivo. Requieren review específico.
 Operaciones de `UPDATE` masivo se hacen en batches, fuera de la migración de
 schema.
 
+**Dónde buscar:** `**/migrations/**`, `**/scripts/**`, `**/jobs/**`, `**/db/**`, `**/*.{sql,ts,js,py}`
+**Patrones:**
+- `UPDATE\s+\w+\s+SET\s+[\s\S]{0,200}(?!WHERE)`     # UPDATE sin WHERE (full table scan)
+- `UPDATE\s+\w+\s+SET\s+[\s\S]{0,500}\bWHERE\s+(?!.*LIMIT|.*BETWEEN|.*id\s*[<>])`     # UPDATE masivo sin batching
+- `\bbatch[_-]?(size|limit)\s*[:=]\s*\d+`     # batch size declarado
+- `(progress|checkpoint|resume)`     # backfill resumible
+- `pg_sleep\(|sleep\(`     # pausas entre batches
+**Señal de N/A:** no hay BD en el stack o no se hacen backfills sobre tablas grandes (volumen pequeño donde un UPDATE único es seguro).
+
 **Verificar:**
 - [ ] Backfill script separado, con batching y progreso medible.
 - [ ] No bloquea la tabla (ej: updates por PK, con sleep entre batches).
@@ -232,6 +340,15 @@ schema.
 **Severidad:** low · **Aplica a:** data · process
 
 Los devs pueden levantar la BD con datos básicos de ejemplo fácilmente.
+
+**Dónde buscar:** `**/seeds/**`, `**/seeders/**`, `**/fixtures/**`, `**/db/**`, `**/scripts/**`, `**/*.{sql,ts,js,py}`, `**/package.json`
+**Patrones:**
+- `(seed|seeder|fixture)`     # presencia de seeds
+- `\b(faker|factory[_-]?bot|factory[_-]?girl|test[_-]?factory)\b`     # generación con fakers
+- `INSERT\s+INTO[\s\S]{0,500}ON\s+CONFLICT\s+DO\s+NOTHING`     # seed idempotente
+- `(real|prod|production)[_-]?(data|dump)`     # seeds usando datos reales (anti-patrón)
+- `email.*@(gmail|hotmail|outlook|yahoo)\.(com|es|cl)`     # emails reales en seeds (PII)
+**Señal de N/A:** no hay BD en el stack (sin ORM en deps: `typeorm|prisma|sequelize|mongoose|sqlalchemy|django|gorm|hibernate`, sin archivos `.sql`).
 
 **Verificar:**
 - [ ] Script de seed documentado.

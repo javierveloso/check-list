@@ -17,6 +17,14 @@
 El lenguaje, conceptos e íconos son los que usa el usuario target — no jerga
 interna del equipo.
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte,html}`, `**/components/**`, `**/locales/**`, `**/i18n/**`, `**/*.{json,yaml,yml}`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / lectura del copy con stakeholder de dominio)*
+- `(kafka|topic|WAL|payload|null|undefined|NaN)`     # heurística: jerga técnica filtrada al UI
+- `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}`     # ISO timestamps mostrados crudos
+- `JSON\.stringify\([^)]*\)`     # exposición de objetos crudos al user
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Terminología del dominio del usuario (no nombres técnicos internos).
 - [ ] Íconos reconocibles (cesta, lupa, engranaje).
@@ -36,6 +44,15 @@ interna del equipo.
 El usuario no tiene que memorizar cosas entre pantallas; las opciones están
 visibles o son recuperables.
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/pages/**`, `**/views/**`
+**Patrones:**
+- `(autocomplete|Autocomplete|Combobox|typeahead)`     # ayudas de recall
+- `(recent|history|recentlyUsed|lastSearched)`     # historial reciente
+- `(breadcrumb|Breadcrumb)`     # contexto persistente
+- `(tooltip|Tooltip|title=)`     # tooltips en íconos ambiguos
+- `(activeFilter|appliedFilter|filterChip|FilterPill)`     # filtros visibles
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Opciones relevantes visibles (vs escondidas en menús hamburguesa cuando no es móvil).
 - [ ] Historial reciente / sugerencias autocompletan.
@@ -49,6 +66,15 @@ visibles o son recuperables.
 **Severidad:** medium · **Tags:** `nielsen-7` · **Aplica a:** frontend
 
 Usuarios nuevos pueden usar el sistema; usuarios expertos tienen atajos.
+
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/hooks/**`, `**/commands/**`
+**Patrones:**
+- `(useHotkeys|react-hotkeys-hook|tinykeys|mousetrap)`     # libs de atajos
+- `(CommandPalette|cmdk|kbar|⌘K|cmd\+k)`     # paleta de comandos
+- `(bulkAction|bulkSelect|selectAll|selected\.length)`     # acciones masivas
+- `<kbd[^>]*>`     # documentación visible de teclas
+- `(shortcuts|keyboardShortcuts)`     # módulo dedicado
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
 
 **Verificar:**
 - [ ] Atajos de teclado documentados (modal `?`, menús con atajos visibles).
@@ -64,6 +90,14 @@ Usuarios nuevos pueden usar el sistema; usuarios expertos tienen atajos.
 Cada elemento compite por atención; lo raramente necesario no vive en pantalla
 principal.
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte,css,scss}`, `**/components/**`, `**/pages/**`
+**Patrones:**
+- *(sin patrones mecánicos — requiere revisión visual con un revisor de UX)*
+- `<h1[^>]*>[\s\S]{0,200}<h1`     # múltiples h1 en una vista (jerarquía rota)
+- `font-size:\s*(8|9|10)px`     # texto demasiado pequeño
+- `(advanced|hidden|moreOptions|showAdvanced)`     # progresividad (presencia esperada)
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Interfaz sin elementos decorativos que no aporten.
 - [ ] Jerarquía visual clara (titulos, subtítulos, espacios).
@@ -76,6 +110,15 @@ principal.
 **Severidad:** medium · **Tags:** `nielsen-10` · **Aplica a:** frontend · content
 
 Ayuda contextual donde ocurre la acción, y docs completas accesibles.
+
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/pages/**`, `**/docs/**`
+**Patrones:**
+- `(Tooltip|tooltip|Popover|Hint|HelpText)`     # ayudas inline
+- `(intro\.js|driver\.js|shepherd|reactour|onboarding)`     # tours/onboarding
+- `href=["'](https?:\/\/(docs|help|support)\.|\/docs|\/help)`     # links a docs
+- `(FAQ|faq|HelpCenter)`     # secciones de ayuda
+- `(?:title|aria-describedby)=["'][^"']{20,}`     # descripciones largas en controles
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
 
 **Verificar:**
 - [ ] Tooltips/hints donde hay concepto ambiguo.
@@ -91,6 +134,15 @@ Ayuda contextual donde ocurre la acción, y docs completas accesibles.
 **Severidad:** high · **Aplica a:** frontend
 
 El layout funciona en móvil, tablet y desktop.
+
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `tailwind.config.*`, `**/*.{tsx,jsx,vue,svelte}`, `**/styles/**`
+**Patrones:**
+- `@media\s*\([^)]*max-width|@media\s*\([^)]*min-width`     # media queries presentes
+- `(sm:|md:|lg:|xl:|2xl:)`     # breakpoints Tailwind
+- `screens:\s*\{`     # config de breakpoints en Tailwind
+- `width:\s*\d{4,}px`     # anchos hardcodeados grandes (rompen mobile)
+- `min-width:\s*1[0-9]{3}px`     # min-widths > 1000px
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
 
 **Verificar:**
 - [ ] Funciona bien en ~320px (móvil chico), ~768px (tablet), ~1024px, ~1280px+.
@@ -110,6 +162,14 @@ El layout funciona en móvil, tablet y desktop.
 Elementos táctiles de al menos 44×44 px (Apple HIG) o 48×48 (Material) y
 separados entre sí.
 
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/*.{tsx,jsx,vue,svelte}`, `tailwind.config.*`, `**/components/**`
+**Patrones:**
+- `(width|height|min-width|min-height):\s*([12]?[0-9])px`     # tamaños < 30px (sospechoso)
+- `(h-|w-|min-h-|min-w-)([1-9]|10|11)\b`     # Tailwind h-1..h-11 (< 44px)
+- `padding:\s*[0-4]px`     # padding mínimo
+- `<(button|a|input)[^>]*style=["'][^"']*(width|height):\s*[12]\d`     # inline pequeño
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Botones/links/inputs ≥ 44×44 px en móvil.
 - [ ] Espaciado mínimo entre targets táctiles.
@@ -124,6 +184,16 @@ separados entre sí.
 
 Las imágenes se adaptan al ancho; videos tienen aspect ratio preservado.
 
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/*.{tsx,jsx,vue,svelte,html}`, `**/components/**`
+**Patrones:**
+- `<img[^>]*\s(width|height)=["']\d+["']`     # dimensiones fijas en HTML
+- `srcset=|sizes=`     # responsive images
+- `<source\s+media=`     # picture con sources
+- `(next/image|nuxt-img|<Image\s)`     # componentes optimizados
+- `aspect-ratio:|aspect-(square|video|\[)`     # aspect ratio definido
+- `<video[^>]*(?!.*aspect)`     # video sin aspect ratio
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] `max-width: 100%` + `height: auto` en imágenes.
 - [ ] `<video>` con aspect ratio fijo para evitar layout shift.
@@ -137,6 +207,15 @@ Las imágenes se adaptan al ancho; videos tienen aspect ratio preservado.
 Las tablas anchas no rompen el layout: se colapsan en cards, o scroll
 horizontal interno.
 
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`
+**Patrones:**
+- `<table|<Table\s|DataTable|<TableContainer`     # tablas presentes
+- `overflow-x:\s*(auto|scroll)|overflow-x-auto`     # scroll horizontal contenido
+- `(CardView|MobileCard|TableMobile|hidden\s+md:)`     # vista alternativa móvil
+- `(tan(stack)?-?table|@?ag-grid|material-react-table)`     # libs de tablas
+- `min-width:\s*[7-9]\d{2}|min-width:\s*1\d{3}`     # tablas anchas
+**Señal de N/A:** stack_signal.has_frontend == false || no hay tablas (`<table>`/DataTable) en el código.
+
 **Verificar:**
 - [ ] Tablas con scroll horizontal interno bien visible.
 - [ ] Alternativa mobile: card view.
@@ -149,6 +228,15 @@ horizontal interno.
 
 El menú hamburguesa funciona correctamente; se cierra al seleccionar; es
 accesible por teclado y screen reader.
+
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/layouts/**`
+**Patrones:**
+- `(MobileMenu|Hamburger|Burger|HamburgerMenu|MobileNav)`     # nombres comunes
+- `aria-expanded=|aria-controls=|aria-haspopup=`     # accesibilidad del trigger
+- `(Sheet|Drawer|<Dialog).*(?:nav|menu)`     # patrones de drawer
+- `(useEscapeKey|onClickOutside|useOnClickOutside)`     # cerrar con Esc/click fuera
+- `(focus-trap|focusTrap|FocusLock)`     # gestión de foco
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
 
 **Verificar:**
 - [ ] Hamburger menu accesible (atributos `aria-expanded`, `aria-controls`).
@@ -166,6 +254,15 @@ accesible por teclado y screen reader.
 Cuando el teclado aparece, el foco queda visible y el usuario puede enviar el
 formulario.
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/forms/**`, `**/components/**`, `**/*.{css,scss}`
+**Patrones:**
+- `(scrollIntoView|scroll-into-view|VisualViewport)`     # ajuste de viewport
+- `inputMode=|inputmode=`     # teclados móviles correctos
+- `type=["'](email|tel|number|url|search)["']`     # input types semánticos
+- `position:\s*fixed.*bottom`     # botones fijos abajo (chocan con teclado)
+- `env\(safe-area-inset|env\(keyboard-inset`     # safe-area y viewport del teclado
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Scroll automático al campo activo.
 - [ ] Botón de submit no queda detrás del teclado.
@@ -177,6 +274,15 @@ formulario.
 **Severidad:** high · **Tags:** `mobile`, `viewport` · **Aplica a:** frontend
 
 El documento HTML declara el viewport correcto y no bloquea el zoom del usuario.
+
+**Dónde buscar:** `**/index.html`, `**/public/**/*.html`, `**/app/layout.{tsx,jsx}`, `**/pages/_document.{tsx,jsx}`, `**/app.html`, `**/index.{html,htm}`
+**Patrones:**
+- `<meta\s+name=["']viewport["']`     # presencia del meta
+- `user-scalable\s*=\s*no`     # bloqueo del zoom (anti-patrón WCAG 1.4.4)
+- `maximum-scale\s*=\s*1`     # bloquea zoom efectivamente
+- `initial-scale\s*=\s*[02-9]`     # initial-scale ≠ 1 sospechoso
+- `width\s*=\s*\d+`     # width fijo en lugar de device-width
+**Señal de N/A:** stack_signal.has_frontend == false (no hay HTML root ni layout raíz; solo backend/CLI/SDK).
 
 **Verificar:**
 - [ ] `<meta name="viewport" content="width=device-width, initial-scale=1">` presente en el `<head>`.
@@ -196,6 +302,15 @@ El documento HTML declara el viewport correcto y no bloquea el zoom del usuario.
 No hay scroll horizontal inesperado en ningún breakpoint. El `overflow: hidden`
 global no se usa como parche para ocultar elementos que se escapan del viewport.
 
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/styles/**`, `tailwind.config.*`, `**/*.{tsx,jsx,vue,svelte}`
+**Patrones:**
+- `(body|html)\s*\{[^}]*overflow-x:\s*hidden`     # parche global (anti-patrón)
+- `overflow-x-hidden`     # equivalente Tailwind aplicado a root
+- `width:\s*\d{3,}px`     # anchos px que pueden sobresalir en mobile
+- `margin(-left|-right):\s*-\d`     # márgenes negativos sospechosos
+- `min-width:\s*\d{3,}px`     # min-widths que rompen viewport
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] No hay `overflow-x: hidden` en `body` o `html` como solución a un bug de layout.
 - [ ] Se verifica en DevTools desactivando temporalmente `overflow: hidden` para encontrar los elementos que sobresalen.
@@ -214,6 +329,15 @@ global no se usa como parche para ocultar elementos que se escapan del viewport.
 
 El contenido es funcional con el zoom del navegador al 200 % sin scroll horizontal
 ni pérdida de funcionalidad (obligatorio WCAG 2.2 AA).
+
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/styles/**`, `tailwind.config.*`, `**/*.{tsx,jsx,vue,svelte}`
+**Patrones:**
+- `font-size:\s*\d+px`     # tamaños px (deberían ser rem/em)
+- `(text-\[\d+px\]|text-xs)`     # tamaños fijos Tailwind
+- `(height|max-height):\s*\d+px[^;]*;\s*overflow:\s*hidden`     # altura fija + overflow oculto
+- `line-height:\s*\d+px`     # line-height en px (no escala)
+- `(rem|em)\b`     # unidades relativas (presencia esperada)
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
 
 **Verificar:**
 - [ ] La interfaz es usable con zoom al 200 % (salvo mapas, diagramas y contenido gráfico complejo, que tienen excepción WCAG).
@@ -237,6 +361,15 @@ ni pérdida de funcionalidad (obligatorio WCAG 2.2 AA).
 Si el sistema operativo del usuario está en dark mode, la aplicación responde
 con colores adecuados, o declara explícitamente que solo soporta light mode.
 
+**Dónde buscar:** `**/*.{css,scss,sass,less}`, `**/styles/**`, `tailwind.config.*`, `**/*.{tsx,jsx,vue,svelte,html}`
+**Patrones:**
+- `prefers-color-scheme:\s*dark`     # query CSS para dark
+- `<meta\s+name=["']color-scheme["']`     # declaración explícita
+- `(dark:|\.dark\s|\[data-theme=)`     # toggle dark Tailwind/CSS
+- `(useTheme|ThemeProvider|next-themes)`     # gestión de tema
+- `#(fff|000|ffffff|000000)|rgb\(255,\s*255,\s*255\)`     # colores hardcodeados absolutos
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Se probó la app con `prefers-color-scheme: dark` activado (DevTools → Rendering → Emulate).
 - [ ] Si no se implementa dark mode, se declara `<meta name="color-scheme" content="light">` para que el navegador no aplique estilos del sistema a inputs y scrollbars.
@@ -259,6 +392,14 @@ con colores adecuados, o declara explícitamente que solo soporta light mode.
 El tono del producto es consistente (formal vs. cercano, serio vs. juguetón)
 y adecuado al dominio.
 
+**Dónde buscar:** `**/locales/**`, `**/i18n/**`, `**/*.{json,yaml,yml,po,arb}`, `**/copy/**`, `**/messages/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana del copy con guía de voz/tono)*
+- `(WTF|fuck|damn|joder)`     # vocabulario inapropiado
+- `(Oops|Uh oh|Yikes)`     # tono casual mezclado
+- `(Por favor|Please|Lo sentimos|We apologize)`     # heurística de cortesía
+**Señal de N/A:** stack_signal.has_frontend == false (no hay UI con copy presentado al usuario).
+
 **Verificar:**
 - [ ] Guía de voz y tono documentada.
 - [ ] Traducciones mantienen el tono.
@@ -270,6 +411,15 @@ y adecuado al dominio.
 **Severidad:** medium · **Aplica a:** frontend · backend
 
 Los textos se extraen a archivos de traducción; el código no concatena.
+
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte,ts,js,py}`, `**/locales/**`, `**/i18n/**`, `**/*.{json,po,arb,yaml}`
+**Patrones:**
+- `(i18next|react-i18next|next-intl|formatjs|vue-i18n|@lingui)`     # libs i18n
+- `\bt\(['"]|\$t\(['"]|i18n\.t\(`     # uso de la función t()
+- `Intl\.(DateTimeFormat|NumberFormat|Collator|PluralRules)`     # formato local
+- `gettext\(|_\(['"]|ngettext\(`     # i18n estilo Python/PHP
+- `["']\s*\+\s*\w+\s*\+\s*["'](?:\s+\w+){0,3}\s+(?:items?|messages?|results?)`     # concatenación
+**Señal de N/A:** producto monolingüe declarado y no hay roadmap de internacionalización.
 
 **Verificar:**
 - [ ] Framework i18n en uso (i18next, FormatJS, Django i18n).
@@ -290,6 +440,15 @@ Los textos se extraen a archivos de traducción; el código no concatena.
 
 El usuario nuevo entiende qué hacer primero.
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/pages/**`, `**/onboarding/**`
+**Patrones:**
+- `(Onboarding|OnboardingFlow|GettingStarted|Welcome|FirstRun)`     # componentes onboarding
+- `(intro\.js|driver\.js|reactour|shepherd|joyride)`     # libs de tour
+- `(EmptyState|NoData|emptyState)`     # estados vacíos (deberían tener CTA)
+- `(skip|onSkip|saltar|Skip)`     # opción de saltar
+- `(firstLogin|isFirstVisit|hasCompletedOnboarding)`     # gating de onboarding
+**Señal de N/A:** stack_signal.has_frontend == false (no hay archivos en `**/*.{tsx,jsx,vue,svelte}` ni `**/public/index.html`).
+
 **Verificar:**
 - [ ] Primera pantalla no asume contexto previo.
 - [ ] Tour interactivo o tooltips explican lo esencial.
@@ -303,6 +462,15 @@ El usuario nuevo entiende qué hacer primero.
 
 En flujos de varios pasos (onboarding, checkout), el usuario ve cuántos pasos
 quedan.
+
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/forms/**`, `**/wizard/**`
+**Patrones:**
+- `(Stepper|Step\b|<Steps|ProgressBar|Wizard)`     # componentes multi-paso
+- `(currentStep|activeStep|stepIndex)`     # estado de paso actual
+- `(totalSteps|stepsCount|step\s+\d+\s*\/\s*\d+)`     # progreso visible
+- `(nextStep|prevStep|goToStep|onBack|onNext)`     # navegación
+- `aria-current=["']step["']`     # accesibilidad del stepper
+**Señal de N/A:** stack_signal.has_frontend == false || el producto no tiene flujos multi-paso (formularios largos, checkout, onboarding).
 
 **Verificar:**
 - [ ] Stepper/progress bar visible.

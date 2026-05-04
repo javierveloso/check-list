@@ -15,6 +15,15 @@
 En código que corre sobre un runtime async (event loop), el I/O se hace con
 APIs async. Las funciones síncronas bloqueantes se ejecutan en thread pool.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`)
+**Patrones:**
+- `async\s+def[\s\S]{0,500}\btime\.sleep\(`     # time.sleep en función async
+- `async\s+def[\s\S]{0,500}\brequests\.(get|post|put|delete)\(` # `requests` en async
+- `async\s+def[\s\S]{0,500}\bopen\([^)]+\)`     # open() bloqueante en async
+- `async\s+function[\s\S]{0,500}\bfs\.readFileSync` # sync FS en async JS
+- `^\s*\w+\s*\(\s*\)\s*\n` (línea con llamada plain a async sin `await`) # await olvidado (heurístico)
+**Señal de N/A:** stack 100% síncrono (CLI Python sync, Java sync, scripts batch).
+
 **Verificar:**
 - [ ] No se mezclan clientes síncronos con runtime async (ej: `requests` en Python/asyncio).
 - [ ] Funciones costosas CPU-bound se mueven a thread/process pool.
@@ -34,6 +43,15 @@ APIs async. Las funciones síncronas bloqueantes se ejecutan en thread pool.
 Cuando se lanza muchas operaciones concurrentes, se limita la concurrencia con
 semáforo, pool, o rate limiter para no sobrecargar recursos externos.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `asyncio\.gather\(\*\[`            # gather sobre comprensión sin límite
+- `Promise\.all\(\s*\w+\.map\(`      # Promise.all sobre map ilimitado
+- `asyncio\.gather\((?![\s\S]{0,200}Semaphore)` # gather sin semáforo cercano
+- `for\s+\w+\s+in\s+\w+\s*\{[\s\S]{0,200}go\s+\w+\(` # goroutine por iteración sin pool
+- `p-limit|p-queue|asyncio\.Semaphore` # señales positivas (presencia esperada)
+**Señal de N/A:** sin operaciones concurrentes (procesamiento serial por diseño).
+
 **Verificar:**
 - [ ] `asyncio.gather` / `Promise.all` sobre N input tiene un límite.
 - [ ] Hay `asyncio.Semaphore`, p-limit, p-queue, o equivalente para APIs externas.
@@ -51,6 +69,15 @@ semáforo, pool, o rate limiter para no sobrecargar recursos externos.
 Las tareas concurrentes se crean bajo un scope que las cancela si el padre falla,
 y se esperan antes de retornar.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `asyncio\.create_task\([^)]+\)(?!\s*[)\],])` # create_task sin guardar referencia
+- `\.then\([^)]+\)(?!\s*\.(catch|finally))`    # promise sin catch/finally
+- `go\s+func\s*\([^)]*\)\s*\{`       # goroutine fire-and-forget Go (revisar wg/errgroup)
+- `setTimeout\(\s*async\s*\(`        # setTimeout con async crea fire-and-forget
+- `TaskGroup|errgroup\.|AbortController` # señales positivas
+**Señal de N/A:** sin programación concurrente (todo serial).
+
 **Verificar:**
 - [ ] Uso de `TaskGroup` (Python 3.11+), `AbortController` (JS), `errgroup` (Go), etc.
 - [ ] Ninguna tarea queda "huérfana" tras retornar del handler.
@@ -67,6 +94,16 @@ y se esperan antes de retornar.
 
 Toda llamada a sistemas externos (BD, HTTP, cache, cola) tiene timeout explícito.
 Sin timeout, un proveedor lento bloquea la aplicación.
+
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`)
+**Patrones:**
+- `httpx\.(get|post|put|delete)\([^)]+\)(?![^)]*timeout)` # httpx sin timeout
+- `requests\.(get|post|put|delete)\([^)]+\)(?![^)]*timeout)` # requests sin timeout
+- `axios\.(get|post|put|delete)\([^)]+\)(?![^)]*timeout)` # axios sin timeout
+- `fetch\([^)]+\)(?![\s\S]{0,200}AbortController|signal)` # fetch sin AbortController
+- `http\.Client\{\s*\}`              # Go http.Client default sin Timeout
+- `new\s+OkHttpClient\(\)\s*[;.]`    # Java OkHttp sin .timeout
+**Señal de N/A:** código sin I/O externo (cómputo puro / batch local sin red).
 
 **Verificar:**
 - [ ] Clientes HTTP inicializados con `timeout` (connect, read, total).
@@ -88,6 +125,14 @@ Sin timeout, un proveedor lento bloquea la aplicación.
 Cuando un request HTTP es cancelado por el cliente o un worker recibe shutdown,
 las tareas se cancelan limpiamente.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`)
+**Patrones:**
+- `except\s+Exception(?![\s\S]{0,200}CancelledError)` # captura genérica que puede tragar CancelledError
+- `try\s*:\s*\n[\s\S]{0,300}except\s*:\s*\n` # except desnudo que traga cancelación
+- `is_disconnected|abortController|context\.Done\(\)` # señales positivas
+- `SIGTERM|SIGINT|graceful` # señales de manejo de shutdown
+**Señal de N/A:** scripts batch o CLI sin servidor / worker de larga duración.
+
 **Verificar:**
 - [ ] Las funciones async manejan `CancelledError` / `AbortError` limpiamente (re-raise tras cleanup).
 - [ ] Los handlers respetan `request.is_disconnected()` en streams largos.
@@ -107,6 +152,15 @@ las tareas se cancelan limpiamente.
 Se evitan variables globales mutables. Cuando son inevitables, están documentadas
 y protegidas.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`)
+**Patrones:**
+- `^let\s+\w+\s*=\s*[^;]+;?$`        # `let` a nivel módulo TS/JS (mutable global)
+- `^var\s+\w+\s*=`                   # `var` a nivel módulo
+- `^global\s+\w+`                    # `global` keyword Python
+- `^\s*[A-Z_][A-Z_0-9]*\s*=\s*\[\s*\]` # const "global" mutable Python (lista vacía a nivel módulo)
+- `singleton|getInstance\(\)`        # patrones singleton (revisar thread-safety)
+**Señal de N/A:** módulo puramente declarativo (constantes inmutables) o función pura aislada.
+
 **Verificar:**
 - [ ] La configuración se pasa como parámetro/inyección, no se lee por variable global en medio del código.
 - [ ] Los singletons son explícitos (lazy init documentado) y thread-safe.
@@ -123,6 +177,15 @@ y protegidas.
 
 Se prefieren estructuras inmutables o copias sobre mutación in-place.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,java,cs,kt,rs}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `\blet\s+\w+\s*[:=]`               # `let` donde podría ser `const` JS/TS
+- `@dataclass\b(?!\([^)]*frozen)`    # dataclass Python sin `frozen=True`
+- `interface\s+\w+\s*\{[^}]*[^?]\s*:\s*[^?\n]+\n[^}]*\}` # interface sin `readonly` (heurístico)
+- `\.push\(|\.pop\(|\.splice\(`      # mutación de arrays JS
+- `frozen=True|@immutable|Object\.freeze|readonly` # señales positivas
+**Señal de N/A:** lenguaje con inmutabilidad por defecto (Haskell, Elm, Clojure).
+
 **Verificar:**
 - [ ] Se usan dataclasses congeladas / records / structs cuando no se necesita mutación.
 - [ ] En JS/TS, `const` por defecto, `readonly` en interfaces.
@@ -135,6 +198,15 @@ Se prefieren estructuras inmutables o copias sobre mutación in-place.
 
 Las clases y estructuras se etiquetan como thread-safe o no. Las compartidas
 tienen locking o usan primitives concurrentes.
+
+**Dónde buscar:** `**/*.{py,java,cs,kt,go,rs}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `threading\.Thread|ThreadPoolExecutor` # uso de threads (Python)
+- `synchronized\s+(public|private|protected)?\s*\w+\s+\w+\(` # método synchronized Java
+- `sync\.(Mutex|RWMutex|Map|Once)`   # primitives concurrentes Go
+- `if\s+\w+\s+is\s+None\s*:[\s\S]{0,150}\w+\s*=\s*\w+\(\)` # lazy init sin lock (race)
+- `volatile|AtomicInteger|AtomicReference` # señales positivas Java
+**Señal de N/A:** runtime single-threaded por contrato (Node.js sin worker_threads, JS browser sin SharedWorker).
 
 **Verificar:**
 - [ ] Docs aclaran si una clase es safe para uso concurrente.
@@ -150,6 +222,13 @@ tienen locking o usan primitives concurrentes.
 
 La lógica que calcula se separa de la que produce efectos externos.
 
+**Dónde buscar:** `**/domain/**`, `**/services/**`, `**/usecases/**`, `**/*.{py,ts,tsx,js,jsx,go,java,cs}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`)
+**Patrones:**
+- `(domain|entities|models)/[^.]+\.(py|ts|js).*(open\(|requests\.|httpx\.|axios\.|fetch\()` # I/O en dominio
+- `def\s+(validate|calculate|compute|transform)\w*[\s\S]{0,400}\bopen\(` # función "pura" con I/O
+- `def\s+(validate|calculate|format)\w*[\s\S]{0,400}(requests|httpx|axios)` # idem con HTTP
+**Señal de N/A:** todo el módulo es adapter/IO por diseño (no hay lógica que separar).
+
 **Verificar:**
 - [ ] Validación, transformación y reglas de negocio: funciones puras.
 - [ ] Persistencia, emails, HTTP, notificaciones: en la capa frontera.
@@ -162,6 +241,14 @@ La lógica que calcula se separa de la que produce efectos externos.
 
 Workers, jobs, consumers de cola pueden recibir el mismo mensaje dos veces.
 Los handlers son idempotentes o hay deduplicación.
+
+**Dónde buscar:** `**/workers/**`, `**/consumers/**`, `**/handlers/**`, `**/*.{py,ts,tsx,js,jsx,go,java,cs}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `consumer|worker|handler|subscribe.*\bINSERT\s+INTO`           # INSERT sin dedup
+- `(stripe|paypal|charge|payment).*\.create\(`                    # cobros sin idempotency-key
+- `(send|deliver)_(email|notification)\((?![^)]*idempotency|message_id|event_id)` # envío sin dedup
+- `Idempotency-Key|idempotency_key|message_id|event_id` # señales positivas
+**Señal de N/A:** sin workers / consumers de cola / jobs reintentables (app puramente request-response).
 
 **Verificar:**
 - [ ] El consumer aplica dedup por `message_id` / `event_id`.
@@ -180,6 +267,16 @@ Los handlers son idempotentes o hay deduplicación.
 `now()`, `uuid()`, `random()` se envuelven en funciones/interfaces que se pueden
 sustituir en tests.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`, `**/test_*`)
+**Patrones:**
+- `\bdatetime\.now\(\)|datetime\.utcnow\(\)`     # tiempo directo Python
+- `\bDate\.now\(\)|new\s+Date\(\)`               # tiempo directo JS/TS
+- `\btime\.Now\(\)`                  # tiempo directo Go
+- `\buuid\.uuid[14]\(\)|crypto\.randomUUID\(\)`  # uuid directo
+- `Math\.random\(\)|random\.(random|randint)\(`  # random directo
+- `Clock|TimeProvider|FakeClock|sinon\.useFakeTimers` # señales positivas
+**Señal de N/A:** código sin lógica dependiente de tiempo o aleatoriedad.
+
 **Verificar:**
 - [ ] Existe un clock / time provider testeable.
 - [ ] Los IDs y aleatorios tienen generador inyectable.
@@ -193,6 +290,15 @@ sustituir en tests.
 **Severidad:** high · **Aplica a:** all
 
 Los mensajes operacionales pasan por el logger configurado.
+
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs,kt}` (excluir `node_modules`, `dist`, `build`, `.venv`, `**/tests/**`, `**/test_*`, `**/scripts/**`)
+**Patrones:**
+- `\bconsole\.(log|debug|info|warn|error)\(` # console.* JS/TS
+- `^\s*print\(`                      # print() Python en código productivo
+- `System\.out\.println|System\.err\.println` # System.out Java
+- `fmt\.Println|fmt\.Printf`         # fmt.Println Go (en código no main/CLI)
+- `puts\s+|p\s+`                     # Ruby puts/p
+**Señal de N/A:** scripts CLI/REPL donde stdout es la salida deseada.
 
 **Verificar:**
 - [ ] Producción no tiene `print`, `System.out`, `console.log`.
@@ -211,6 +317,14 @@ Los mensajes operacionales pasan por el logger configurado.
 Cada mensaje está en el nivel que corresponde: DEBUG para desarrollo, INFO para
 operaciones normales, WARNING para anomalías recuperables, ERROR para fallos.
 
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs,kt}`, `**/logging.{conf,yaml,json}`, `**/log4j*.{xml,properties}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `logger\.(debug|info|warn|error|critical)\b` # uso de niveles (auditar uso correcto)
+- `level\s*[:=]\s*["']?DEBUG["']?`   # nivel DEBUG en config (revisar entorno)
+- `for\s+\w+\s+in[\s\S]{0,200}logger\.(info|debug)` # log dentro de loop (potencial storm)
+- `logger\.debug\(.*format\(`        # formateo costoso en debug
+**Señal de N/A:** sin sistema de logging adoptado (proyecto sin observabilidad estructurada todavía).
+
 **Verificar:**
 - [ ] Nivel por defecto en producción es INFO o superior.
 - [ ] Los logs en hot paths no son DEBUG con formato costoso.
@@ -223,6 +337,15 @@ operaciones normales, WARNING para anomalías recuperables, ERROR para fallos.
 
 Los logs usan formato estructurado (JSON) con campos consistentes (request_id,
 user_id, duration_ms, etc.).
+
+**Dónde buscar:** `**/*.{py,ts,tsx,js,jsx,go,java,cs,kt}`, `**/logging*.{conf,yaml,json,py,ts,js}` (excluir `node_modules`, `dist`, `build`, `.venv`)
+**Patrones:**
+- `logger\.(info|warn|error)\(\s*f["']`          # f-string sin extra-fields Python
+- `logger\.(info|warn|error)\(\s*` + `\` + `\$\{`  # template literal sin contexto JS/TS
+- `structlog|pino|winston|zerolog|zap`           # señales positivas (loggers estructurados)
+- `request_id|trace_id|correlation_id|user_id`   # campos de contexto esperados
+- `JSONFormatter|jsonlogger|json_log`            # formatter JSON configurado
+**Señal de N/A:** app frontend pura sin logging server-side (ver `10-observabilidad/`).
 
 (Detalle completo en `10-observabilidad/01-logs-metricas.md`.)
 

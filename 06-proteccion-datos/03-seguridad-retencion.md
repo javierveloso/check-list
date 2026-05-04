@@ -16,6 +16,14 @@ TLS 1.2+ en tránsito, cifrado en reposo para datos personales.
 
 (Ver `SEC-CRYPTO-030`, `SEC-CRYPTO-031` en seguridad para detalle.)
 
+**Dónde buscar:** `**/*.{ts,js,py,go,tf,yaml,yml}`, `**/migrations/**`, `**/*.sql`, `**/infra/**`
+**Patrones:**
+- `pgcrypto|TDE|encrypted\s*=\s*true|encryption_at_rest`     # cifrado en reposo declarado
+- `TLS|ssl_?true|sslmode=require|https://`     # TLS exigido
+- `http://[^l].*\.(com|net|io)`     # tráfico sin TLS hacia terceros
+- `KMS|kms_key|kms\.encrypt`     # gestión de claves
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] TLS 1.2+ en toda comunicación externa.
 - [ ] Volúmenes/DB con cifrado de disco o tabular.
@@ -30,6 +38,14 @@ TLS 1.2+ en tránsito, cifrado en reposo para datos personales.
 Solo el personal que lo necesita accede a datos personales, y su acceso queda
 registrado.
 
+**Dónde buscar:** `**/audit/**`, `**/*.{ts,js,py,go,tf}`, `**/iam/**`, `**/rbac/**`
+**Patrones:**
+- `audit_?log|access_?log|log\.audit`     # auditoría de accesos
+- `mfa|2fa|totp|webauthn`     # MFA en accesos privilegiados
+- `role.*admin|just.?in.?time.*access|temporary.*grant`     # accesos temporales
+- `GRANT\s+(ALL|SELECT).*TO\s+\w+`     # permisos amplios en BD
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Acceso a BD productiva restringido (tiempo limitado, MFA).
 - [ ] Sin copias locales de datos productivos en laptops.
@@ -43,6 +59,14 @@ registrado.
 
 Entornos no productivos trabajan con datos sintéticos o anonimizados, no con
 copia literal de producción.
+
+**Dónde buscar:** `**/seeds/**`, `**/fixtures/**`, `**/scripts/**`, `**/*.{ts,js,py,sh}`, `.env*`
+**Patrones:**
+- `faker\.|@faker-js|factory_boy|mimesis`     # generación de datos sintéticos
+- `pg_dump.*prod|mysqldump.*prod|aws s3.*prod.*backup`     # copia desde prod (sospechoso)
+- `restore.*prod.*to.*(dev|staging)|seed.*from.*prod`     # restauración prod→dev
+- `mask|anonymize|scrub`     # enmascaramiento previo
+**Señal de N/A:** no hay entorno de dev/staging (proyecto sin múltiples entornos).
 
 **Verificar:**
 - [ ] Dev/staging usa datos generados o anonimizados.
@@ -60,6 +84,14 @@ copia literal de producción.
 El acceso a registros con datos sensibles (salud, financieros, PII crítica) se
 audita.
 
+**Dónde buscar:** `**/audit/**`, `**/*.{ts,js,py,go}`, `**/middleware/**`
+**Patrones:**
+- `audit_log|AuditLog|access_event|@Audited`     # capa de auditoría
+- `log\.(info|audit).*\b(user|customer|patient).*(view|read|access)`     # logueo de accesos
+- `append.?only|immutable.*log|WORM`     # logs inmutables
+- `alert.*bulk|threshold.*queries|anomaly.*detection`     # alertas de acceso masivo
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Log de quién ve qué registro, cuándo y por qué (si aplica).
 - [ ] Alerta en accesos masivos o anómalos.
@@ -75,6 +107,13 @@ audita.
 Cada tipo de dato personal tiene un plazo máximo de retención, alineado con
 la finalidad y la ley aplicable.
 
+**Dónde buscar:** `ROPA.{md,xlsx}`, `privacy.md`, `**/migrations/**`, `**/*.{ts,js,py,sql}`
+**Patrones:**
+- `\bretention(_period)?|expires_?at|ttl|expire_after`     # política declarada en código
+- `delete.*older.*than|where.*created_at.*<`     # consultas de purga
+- *(sin patrones mecánicos — revisión humana / legal para mapear ley→plazo)*
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Tabla "tipo de dato → retención → justificación".
 - [ ] Retenciones documentadas en la política de privacidad.
@@ -86,6 +125,14 @@ la finalidad y la ley aplicable.
 **Severidad:** high · **Aplica a:** backend · data
 
 Existen jobs automáticos que aplican las políticas de retención.
+
+**Dónde buscar:** `**/jobs/**`, `**/cron/**`, `**/workers/**`, `**/*.{ts,js,py,yaml}`
+**Patrones:**
+- `cron|schedule|@Cron|every.*day|0\s+\d+\s+\*\s+\*\s+\*`     # jobs programados
+- `purge.*expired|cleanup.*old|retention.*job`     # job de retención
+- `legal_?hold|exception.*retention`     # excepciones gestionadas
+- `idempotent|dry.?run|preview`     # idempotencia/auditoría del job
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Job programado que detecta datos vencidos y los borra/anonimiza.
@@ -99,6 +146,14 @@ Existen jobs automáticos que aplican las políticas de retención.
 **Severidad:** high · **Aplica a:** backend · data
 
 Cuando un dato se borra, también se borra en:
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/jobs/**`, `**/search/**`, `**/cache/**`, `**/infra/**`
+**Patrones:**
+- `redis\.(del|unlink)|cache\.(invalidate|evict)|cdn.*purge`     # invalidación de caches
+- `elastic.*delete|opensearch.*delete|algolia.*delete|meilisearch.*delete`     # search index
+- `data.?warehouse|bigquery|snowflake|redshift.*delete`     # warehouse
+- `console\.log\(.*user\.|log.*\.email|log.*\.rut`     # PII en logs (no debería loguearse)
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 - [ ] Réplicas y secondaries.
 - [ ] Cachés (Redis, CDN).
@@ -115,6 +170,13 @@ Cuando un dato se borra, también se borra en:
 Se distingue "cerrar cuenta" (el usuario ya no usa el servicio, los datos
 pueden conservarse si hay base legal) de "borrar datos" (derecho al olvido).
 
+**Dónde buscar:** `**/*.{ts,js,py,jsx,tsx}`, `**/account/**`, `**/settings/**`
+**Patrones:**
+- `close_?account|deactivate_?account|disable_?account`     # cierre de cuenta
+- `delete_?account|erase_?data|right.?to.?be.?forgotten`     # borrado real
+- `ui.*differentiates|two.*options|distinguish`     # diferenciación en UI
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] UI y comunicación distinguen ambos casos.
 - [ ] "Cerrar cuenta" mantiene lo necesario para cumplimiento legal.
@@ -130,6 +192,14 @@ pueden conservarse si hay base legal) de "borrar datos" (derecho al olvido).
 Cada transferencia de datos fuera del área de residencia legal (ej: EEE para
 GDPR) tiene una base jurídica (adecuación, SCC, BCRs, derogaciones).
 
+**Dónde buscar:** `ROPA.{md,xlsx}`, `DPA*`, `**/infra/**`, `**/*.{tf,yaml,yml}`, `**/config/**`
+**Patrones:**
+- `region\s*[:=]\s*["']?(us-|ap-|eu-|sa-)`     # región de cloud declarada
+- `endpoint.*amazonaws|endpoint.*googleapis|endpoint.*azure`     # endpoints regionales
+- *(sin patrones mecánicos para SCC/BCR — revisión humana / legal)*
+- `scc|standard.*contractual.*clauses|tia\b|schrems`     # menciones en docs
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Lista de procesadores y países donde se alojan los datos.
 - [ ] Para cada uno: base jurídica documentada (ej: SCC firmadas).
@@ -143,6 +213,13 @@ GDPR) tiene una base jurídica (adecuación, SCC, BCRs, derogaciones).
 
 Hay acuerdo de procesamiento de datos (DPA) firmado con todo proveedor que
 procese datos personales en nombre de la organización.
+
+**Dónde buscar:** `DPA*`, `ROPA.{md,xlsx}`, `**/legal/**`, `**/integrations/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `import.*(stripe|sendgrid|twilio|hubspot|segment|mixpanel|openai|anthropic)`     # 3os a contrastar con DPAs
+- `sub.?processor|subencargado`     # listado de sub-encargados
+**Señal de N/A:** el repo no envía datos personales a ningún proveedor externo.
 
 **Verificar:**
 - [ ] DPA vigente con cada procesador (cloud, LLM provider, email, analytics, etc.).
@@ -160,6 +237,13 @@ procese datos personales en nombre de la organización.
 Existe plan documentado para detectar, contener, notificar y aprender de
 brechas de datos.
 
+**Dónde buscar:** `**/runbooks/**`, `**/playbooks/**`, `**/incident*`, `SECURITY.md`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+- `incident.*response|breach.*notification|72.?hours`     # plan documentado
+- `pagerduty|opsgenie|alertmanager`     # routing de alertas
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Playbook escrito (quién hace qué en las primeras 24 h).
 - [ ] Plazos de notificación a autoridad (72 h en GDPR) incorporados.
@@ -175,6 +259,13 @@ brechas de datos.
 Toda brecha (aunque no sea notificable) se registra internamente para
 aprendizaje y auditoría.
 
+**Dónde buscar:** `**/incident*`, `**/postmortem*`, `**/runbooks/**`, `**/security*`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+- `incident.*log|breach.*register|incident.*tracker`     # registro interno
+- `post.?mortem|retrospective`     # post-mortems
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Registro con fecha, naturaleza, datos afectados, medidas tomadas.
 - [ ] Revisado en post-mortems.
@@ -188,6 +279,13 @@ aprendizaje y auditoría.
 
 Cuando un tratamiento presenta alto riesgo (ej: profiling a gran escala, datos
 sensibles, vigilancia), se hace evaluación de impacto.
+
+**Dónde buscar:** `DPIA*`, `PIA*`, `**/legal/**`, `**/privacy/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `dpia|pia|privacy.*impact.*assessment|evaluacion.*impacto`     # plantilla/documento
+- `\b(profiling|biometric|health|location|surveillance)\b`     # tratamientos de alto riesgo a gatillar DPIA
+**Señal de N/A:** el repo no realiza tratamientos de alto riesgo (sin profiling, sin datos sensibles, sin vigilancia).
 
 **Verificar:**
 - [ ] Criterio documentado sobre cuándo se exige DPIA.
@@ -206,6 +304,13 @@ Cuando el usuario sube documentos que contienen datos de terceros (contratos,
 actas, notas), la organización actúa como encargado y no los trata fuera de
 los fines del usuario.
 
+**Dónde buscar:** `**/upload*`, `**/documents/**`, `**/files/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `multer|formidable|upload\.|s3.*putObject|blob.*upload`     # ingest de archivos
+- `extract.*entities|nlp.*extract|named.*entity`     # extracción a BD separada
+- `train.*model|fine.?tune.*data`     # uso para entrenamiento
+**Señal de N/A:** el sistema no acepta documentos del usuario (sin upload de archivos).
+
 **Verificar:**
 - [ ] Los datos no se extraen a BD separadas para otros fines.
 - [ ] No se usan para entrenar modelos sin autorización explícita.
@@ -220,6 +325,13 @@ los fines del usuario.
 Si los datos están bajo secreto profesional (abogado-cliente, médico-paciente,
 periodístico), hay medidas extra: acceso aun más restringido, cifrado por
 tenant/cliente, no extracción ni reprocesamiento.
+
+**Dónde buscar:** `**/tenants/**`, `**/*.{ts,js,py,go}`, `**/encryption/**`
+**Patrones:**
+- `tenant_?key|per.?tenant.*encrypt|kms.*tenant`     # cifrado por tenant
+- `attorney|client|patient|privileged`     # marcas de privilegio
+- `secondary.*purpose|extract.*entities`     # señal de reprocesamiento (no debería)
+**Señal de N/A:** los datos del repo no están bajo secreto profesional (no hay tenants legales/médicos/periodísticos).
 
 **Verificar:**
 - [ ] Documentación del régimen legal aplicable.
@@ -236,6 +348,14 @@ Cuando la aplicación envía datos personales a una API de tercero (software de 
 nómina, gestión de talento, analítica, etc.) como parte de su proceso principal,
 ese proveedor actúa como encargado (processor). Debe existir un DPA vigente y la
 integración debe estar documentada en el ROPA.
+
+**Dónde buscar:** `**/integrations/**`, `**/clients/**`, `**/*.{ts,js,py,go}`, `DPA*`, `ROPA.{md,xlsx}`
+**Patrones:**
+- `(fetch|axios|requests|http\.post).*(payroll|hr|talent|nomina|recursos.humanos)`     # envío a 3os de RRHH
+- `process\.env\.[A-Z_]*API_?KEY|api[_-]?key\s*[:=]\s*["'][^"']+["']`     # credenciales hardcodeadas (mal)
+- `secret.*manager|key.?vault|aws.*secrets|process\.env`     # gestión de secretos correcta
+- `payload.*(email|rut|dni|address|birthdate)`     # campos enviados a verificar minimización
+**Señal de N/A:** el sistema no integra con APIs externas que reciban PII (sin clientes HTTP a sistemas de RRHH/nómina/CRM).
 
 **Verificar:**
 - [ ] Cada integración que transmite PII tiene el proveedor identificado como encargado en el ROPA.

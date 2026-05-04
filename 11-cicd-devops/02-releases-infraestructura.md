@@ -11,6 +11,15 @@
 
 El despliegue no interrumpe servicio: rolling, blue-green, canary.
 
+**Dónde buscar:** `**/k8s/**`, `**/helm/**`, `**/*.{tf,yaml}`, `Dockerfile*`, `.github/workflows/*.{yml,yaml}`
+**Patrones:**
+- `strategy:\s*\n\s*type:\s*RollingUpdate|maxUnavailable|maxSurge`     # rolling K8s
+- `blue.green|blueGreen|argo-rollouts|flagger`     # estrategia avanzada
+- `terminationGracePeriodSeconds`     # graceful shutdown
+- `preStop|SIGTERM`     # señal de shutdown manejada
+- `kubectl\s+rollout\s+restart|recreate`     # restart abrupto (anti-señal)
+**Señal de N/A:** no hay infraestructura/deploy en el repo o stack_signal.has_ci == false
+
 **Verificar:**
 - [ ] Estrategia definida y documentada (rolling por defecto).
 - [ ] Liveness/readiness (ver `OBS-HEALTH-001`) permiten orquestar correctamente.
@@ -29,6 +38,15 @@ El despliegue no interrumpe servicio: rolling, blue-green, canary.
 Cambios significativos se despliegan gradualmente (1% → 10% → 50% → 100%) con
 métricas monitoreadas.
 
+**Dónde buscar:** `**/k8s/**`, `**/helm/**`, `**/*.{tf,yaml}`, `.github/workflows/*.{yml,yaml}`
+**Patrones:**
+- `argo-rollouts|flagger|spinnaker|kayenta`     # tooling de canary
+- `canary:|canaryWeight|stepWeights`     # configuración canary
+- `analysis:|analysisTemplate`     # análisis automático de métricas
+- `setWeight:\s*\d+|weight:\s*\d+`     # progresión por peso
+- `pause:\s*\{`     # pausa para revisión humana
+**Señal de N/A:** no hay infraestructura/deploy en el repo o stack_signal.has_ci == false
+
 **Verificar:**
 - [ ] Herramienta (Flagger, Argo Rollouts, LaunchDarkly) en uso.
 - [ ] Criterios de promoción/rollback claros y automáticos donde posible.
@@ -41,6 +59,15 @@ métricas monitoreadas.
 
 Se puede volver a la versión anterior en minutos; el proceso se prueba
 periódicamente.
+
+**Dónde buscar:** `.github/workflows/*.{yml,yaml}`, `**/k8s/**`, `**/helm/**`, `scripts/**`, `runbooks/**`, `**/*.md`
+**Patrones:**
+- `kubectl\s+rollout\s+undo|helm\s+rollback|argo\s+rollout\s+abort`     # comandos de rollback
+- `rollback\.sh|rollback-`     # scripts de rollback
+- `previous_image|PREVIOUS_TAG|LAST_KNOWN_GOOD`     # tracking de versión previa
+- `revisionHistoryLimit:\s*\d+`     # historia preservada para rollback
+- `workflow_dispatch.*rollback`     # workflow manual de rollback
+**Señal de N/A:** no hay infraestructura/deploy en el repo o stack_signal.has_ci == false
 
 **Verificar:**
 - [ ] Rollback a versión anterior con un comando/botón.
@@ -58,6 +85,15 @@ periódicamente.
 Features nuevas se liberan detrás de flags; se pueden activar/desactivar sin
 redeploy.
 
+**Dónde buscar:** `**/*.{ts,js,py,go,java}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `LaunchDarkly|launchdarkly|unleash|configcat|flagsmith|optimizely`     # SDK de flags
+- `featureFlag|feature_flag|isEnabled\(|isFeatureEnabled`     # uso de flags
+- `if\s*\(\s*process\.env\.FEATURE_`     # flags por env var (variante simple)
+- `killswitch|kill[_-]?switch`     # killswitch presente
+- `// TODO.*remove.*flag|sunset:\s*\d{4}`     # gestión de sunset
+**Señal de N/A:** no se usan feature flags en el repo (no hay SDK ni flags en código)
+
 **Verificar:**
 - [ ] Sistema de flags (LaunchDarkly, Unleash, propio) en uso.
 - [ ] Flags con dueño, descripción y fecha de sunset.
@@ -70,6 +106,14 @@ redeploy.
 **Severidad:** medium · **Aplica a:** backend · frontend
 
 La misma flag se evalúa igual en toda la request.
+
+**Dónde buscar:** `**/middleware/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `flagContext|FlagProvider|FeatureFlagContext`     # contexto de flags por request
+- `evaluateAll\(|getAllFlags\(`     # evaluación batch
+- `userKey|userId|tenantId`\s*:\s.*flag     # contexto pasado al SDK
+- `useFlag\(|useFeature\(`     # hooks por componente (riesgo flapping si se reevalúa)
+**Señal de N/A:** no se usan feature flags en el repo
 
 **Verificar:**
 - [ ] Flag evaluada una vez por request, no múltiples veces (evita flapping).
@@ -86,6 +130,15 @@ La misma flag se evalúa igual en toda la request.
 Los recursos de cloud, networking, DNS, queues, etc., están en código (Terraform,
 Pulumi, CDK) versionado.
 
+**Dónde buscar:** `**/*.{tf,bicep}`, `**/cdk*.{ts,py,json}`, `**/pulumi*.{ts,py,yaml}`, `**/k8s/**`, `**/helm/**`
+**Patrones:**
+- `terraform\s+\{|provider\s+[\"']aws[\"']|resource\s+[\"']`     # bloques Terraform
+- `backend\s+[\"'](s3|azurerm|gcs|remote)[\"']`     # state remoto compartido
+- `terraform\s+plan|tf\s+plan`     # plan en pipeline
+- `terraform\s+apply\s+-auto-approve`     # apply sin revisión (anti-señal en prod)
+- `tags\s*=\s*\{`     # tagging de recursos
+**Señal de N/A:** no hay infraestructura como código en el repo o stack_signal.has_ci == false
+
 **Verificar:**
 - [ ] Terraform/Pulumi/CDK con state backend compartido.
 - [ ] PRs de IaC requieren review.
@@ -99,6 +152,15 @@ Pulumi, CDK) versionado.
 
 Los valores secretos no viven en los archivos de IaC commiteados.
 
+**Dónde buscar:** `**/*.{tf,tfvars,bicep,yaml}`, `**/k8s/**`, `**/helm/**`
+**Patrones:**
+- `data\s+[\"']aws_secretsmanager_secret|azurerm_key_vault_secret|google_secret_manager`     # referencia a vault
+- `external-secrets|sealed-secrets|sops`     # tooling de secret management
+- `sensitive\s*=\s*true`     # marcado sensible
+- `password\s*=\s*[\"'][^\"']+[\"']|api_key\s*=\s*[\"'][a-zA-Z0-9]{16,}`     # secret hardcodeado (anti-señal)
+- `\.tfvars\b`     # tfvars commiteado (verificar contenido)
+**Señal de N/A:** no hay infraestructura como código en el repo o stack_signal.has_ci == false
+
 **Verificar:**
 - [ ] Referencias a secret manager / vault.
 - [ ] Variables marcadas como `sensitive = true` cuando aplique.
@@ -110,6 +172,15 @@ Los valores secretos no viven en los archivos de IaC commiteados.
 **Severidad:** medium · **Aplica a:** infra
 
 Patrones comunes (network, servicio, BD) viven en módulos reutilizables.
+
+**Dónde buscar:** `**/*.{tf,bicep}`, `**/modules/**`, `**/helm/**/Chart.yaml`
+**Patrones:**
+- `module\s+[\"']\w+[\"']\s*\{`     # uso de módulos
+- `source\s*=\s*[\"'](git|github\.com|registry\.terraform\.io)`     # fuente versionada
+- `version\s*=\s*[\"'][~^]?\d+\.\d+`     # pin a versión
+- `tflint|checkov|terratest`     # tooling de validación
+- `source\s*=\s*[\"']\.\./|source\s*=\s*[\"']\./`     # módulo local sin pin (anti-señal)
+**Señal de N/A:** no hay infraestructura como código en el repo o stack_signal.has_ci == false
 
 **Verificar:**
 - [ ] Módulos versionados y documentados.
@@ -126,6 +197,15 @@ Patrones comunes (network, servicio, BD) viven en módulos reutilizables.
 Las migraciones están en el repo, son forward-only preferentemente, y se
 aplican en el deploy.
 
+**Dónde buscar:** `**/migrations/**`, `**/alembic/**`, `**/prisma/migrations/**`, `**/*.{sql}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `alembic|flyway|liquibase|prisma\s+migrate|knex.*migrate|django.*migrations`     # tool
+- `\d{8,14}_\w+\.(sql|py|js|ts)`     # nombre con timestamp
+- `migrations/V\d+__|migrations/\d+_`     # esquema de versionado
+- `migrate\s+up|migrate\s+deploy|alembic\s+upgrade`     # comando en pipeline
+- `BEGIN;.*COMMIT;`     # transacción explícita
+**Señal de N/A:** no hay base de datos relacional en el repo (sin migraciones presentes)
+
 **Verificar:**
 - [ ] Herramienta (Alembic, Flyway, Liquibase, Prisma migrate, Django migrations) en uso.
 - [ ] Nombres con timestamp y descripción.
@@ -140,6 +220,15 @@ aplican en el deploy.
 **Severidad:** high · **Aplica a:** data
 
 Cambios de schema se diseñan para funcionar con versión N y N+1 simultáneas.
+
+**Dónde buscar:** `**/migrations/**`, `**/*.sql`
+**Patrones:**
+- `ALTER\s+TABLE\s+\w+\s+DROP\s+COLUMN`     # drop directo (anti-señal sin expand-contract)
+- `ADD\s+COLUMN\s+\w+\s+\w+\s+NOT\s+NULL\b(?!\s+DEFAULT)`     # NOT NULL sin default (anti-señal)
+- `RENAME\s+(COLUMN|TO)`     # rename directo (anti-señal)
+- `CREATE\s+INDEX\s+CONCURRENTLY|ADD\s+COLUMN.*DEFAULT`     # patrón compatible (señal positiva)
+- `backfill|backfill_`     # backfill explícito
+**Señal de N/A:** no hay base de datos relacional / migraciones en el repo
 
 **Verificar:**
 - [ ] Pattern expand-contract para renames y cambios incompatibles.
@@ -156,6 +245,15 @@ Cambios de schema se diseñan para funcionar con versión N y N+1 simultáneas.
 
 Los backups se crean automáticamente y su restauración se prueba.
 
+**Dónde buscar:** `**/*.{tf,yaml,yml}`, `**/k8s/**`, `**/helm/**`, `.github/workflows/*.{yml,yaml}`, `scripts/**`
+**Patrones:**
+- `backup_retention_period|backup_window|backupSchedule`     # config de backups
+- `velero|kasten|stash|restic|pgbackrest`     # tooling de backup
+- `kms_key_id|encrypted\s*=\s*true`     # backups cifrados
+- `cross_region_backup|cross-region|destination_region`     # backup cross-region
+- `RPO|RTO`     # objetivos documentados
+**Señal de N/A:** no hay infraestructura/datos persistentes en el repo o stack_signal.has_ci == false
+
 **Verificar:**
 - [ ] Frecuencia y retención definidas.
 - [ ] Backups cifrados con claves gestionadas.
@@ -169,6 +267,11 @@ Los backups se crean automáticamente y su restauración se prueba.
 **Severidad:** high · **Aplica a:** infra
 
 Existe plan documentado para caídas mayores (región entera, pérdida de datos).
+
+**Dónde buscar:** `docs/**`, `runbooks/**`, `dr/**`, `**/*.md`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+**Señal de N/A:** no hay infraestructura/servicios productivos en el repo o stack_signal.has_ci == false
 
 **Verificar:**
 - [ ] Playbook escrito con pasos, contactos, dependencias.
@@ -184,6 +287,14 @@ Existe plan documentado para caídas mayores (región entera, pérdida de datos)
 
 Se miden: frecuencia de deploys, lead time for changes, change failure rate,
 time to restore (DORA metrics).
+
+**Dónde buscar:** `.github/workflows/*.{yml,yaml}`, `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `deployment_frequency|lead_time|change_failure_rate|mttr`     # nombres DORA
+- `four-keys|fourkeys|sleuth|linearb`     # tooling DORA
+- `deployment\.created|deployment\.success|deployment\.failure`     # eventos de deploy
+- `incident\.opened|incident\.resolved`     # tracking de incidentes
+**Señal de N/A:** no hay archivos en `.github/workflows/`, `.gitlab-ci.yml`, `azure-pipelines*`, `Jenkinsfile` o stack_signal.has_ci == false
 
 **Verificar:**
 - [ ] Deployment frequency visible.

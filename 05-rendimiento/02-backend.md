@@ -12,6 +12,17 @@
 El servidor HTTP corre async; toda operación de I/O (BD, HTTP, cache, cola)
 es async. (Ver también `CODE-ASYNC-001`.)
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/handlers/**`, `**/middleware/**`, `**/controllers/**`
+**Patrones:**
+- `(readFileSync|writeFileSync|execSync|spawnSync)` # APIs sync de Node
+- `requests\.(get|post|put|delete)\(`      # python sync HTTP en código async
+- `time\.sleep\(`                          # sync sleep en código async
+- `\bdef\s+\w+[\s\S]{0,500}\bawait\b`      # def (sync) con await dentro (error)
+- `async\s+def\s+\w+[\s\S]{0,500}requests\.` # async def usando librería sync
+- `(asyncio|aiohttp|httpx|fastapi|express|fastify|nestjs)` # stack async (positivo)
+
+**Señal de N/A:** runtime sin event loop (Rails sync, PHP-FPM, scripts CLI).
+
 **Verificar:**
 - [ ] Handlers async con clientes async.
 - [ ] Código bloqueante pesado movido a thread pool / worker.
@@ -23,6 +34,17 @@ es async. (Ver también `CODE-ASYNC-001`.)
 **Severidad:** medium · **Aplica a:** backend
 
 Operaciones independientes se ejecutan en paralelo con límite de concurrencia.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/handlers/**`
+**Patrones:**
+- `Promise\.all\(\s*\[`                    # paralelización (revisar límite)
+- `asyncio\.gather\(`                      # paralelización Python
+- `(p-limit|p-map|bottleneck|semaphore)`   # libs de límite
+- `Semaphore\(\s*\d+\s*\)|asyncio\.Semaphore`  # semáforo explícito
+- `for[\s\S]{0,200}await[\s\S]{0,200}push\([\s\S]{0,200}Promise\.all` # acumular promesas + all
+- `workerData|cluster\.fork\(|multiprocessing\.Pool` # process pool
+
+**Señal de N/A:** sistema sin operaciones independientes paralelizables.
 
 **Verificar:**
 - [ ] `gather` / `Promise.all` con límite (Semaphore, p-limit) en fan-out.
@@ -37,6 +59,17 @@ Operaciones independientes se ejecutan en paralelo con límite de concurrencia.
 Todo I/O tiene timeout; las colas de trabajo no aceptan indefinidamente.
 
 (Ver `SEC-HEADERS-041`, `CODE-ASYNC-004`.)
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/clients/**`, `**/config/**`, `**/data-source.*`
+**Patrones:**
+- `axios\.(get|post|put|delete|create)\([^)]*\)(?![\s\S]{0,200}timeout)` # axios sin timeout
+- `fetch\([^)]+\)(?![\s\S]{0,200}signal)`  # fetch sin AbortController
+- `httpx\.\w+\([\s\S]{0,200}\)(?![\s\S]{0,200}timeout)` # httpx sin timeout
+- `(connectTimeoutMS|connectionTimeoutMillis|acquireTimeoutMillis|statement_timeout)` # timeouts BD (positivo)
+- `setTimeout\(.*server\.\w+|server\.setTimeout\(` # timeout HTTP
+- `(circuit-breaker|opossum|cockatiel|tenacity)`  # circuit breakers
+
+**Señal de N/A:** servicio sin I/O externo (computación pura).
 
 **Verificar:**
 - [ ] Timeout en clientes HTTP, BD, cache.
@@ -84,6 +117,17 @@ suggestion: |
 
 Responses largos se sirven en streaming, no se arman en memoria.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/handlers/**`, `**/controllers/**`, `**/exports/**`
+**Patrones:**
+- `(StreamingResponse|res\.write\(|response\.write|stream\.pipe)` # streaming explícito
+- `JSON\.stringify\([\s\S]{0,200}\.findAll\(\)|\.find\(\{\}\)` # JSON masivo en memoria
+- `Buffer\.concat\(\[[\s\S]{0,200}\]\)`    # concatenación de buffers grandes
+- `\.toBuffer\(\)|readAll\(`               # carga completa en memoria
+- `Transfer-Encoding:\s*chunked`           # chunked HTTP (positivo)
+- `csv-stringify|fast-csv|@fast-csv/format` # libs CSV streaming
+
+**Señal de N/A:** API sin endpoints que retornen payloads grandes.
+
 **Verificar:**
 - [ ] `StreamingResponse` / `chunked transfer encoding` cuando el tamaño es grande o desconocido.
 - [ ] Generación de CSV/JSON grande se serializa en chunks.
@@ -101,6 +145,16 @@ Responses largos se sirven en streaming, no se arman en memoria.
 
 Hay un pool de conexiones a BD/cache/HTTP compartido por la app, con tamaño
 acorde al workload.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/data-source.*`, `**/db.{ts,js,py}`, `**/config/**`, `**/*.module.ts`
+**Patrones:**
+- `httpx\.AsyncClient\(\)|new\s+axios\.create\(\)` # cliente creado por request (revisar scope)
+- `create_engine\(|new\s+DataSource\(|new\s+Pool\(`  # init de pool (revisar scope)
+- `(pool_size|poolSize|max:\s*\d+|max_pool_size)` # tamaño de pool configurado
+- `idleTimeoutMillis|idle_timeout|max_overflow` # parámetros de pool
+- `function\s+\w+Handler[\s\S]{0,500}new\s+(Pool|Client|AsyncClient)` # pool dentro de handler
+
+**Señal de N/A:** servicio stateless sin conexiones a BD/HTTP externos.
 
 **Verificar:**
 - [ ] Cliente HTTP creado una vez y reutilizado (no por request).
@@ -121,6 +175,16 @@ acorde al workload.
 Clientes HTTP reutilizan conexiones (keep-alive). Pools de BD hacen ping/recycle
 apropiado.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/clients/**`, `**/db.*`, `**/data-source.*`
+**Patrones:**
+- `(pool_pre_ping|pool_recycle|pingInterval|keepAlive)` # configuración de recycle
+- `keepAlive\s*:\s*true|http\.Agent\(\{[^}]*keepAlive` # agent con keep-alive
+- `new\s+http\.Agent\(|new\s+https\.Agent\(` # agent custom
+- `Connection:\s*close`                    # forzar cierre (anti-pattern)
+- `maxSockets|maxFreeSockets`              # límites de socket
+
+**Señal de N/A:** servicio sin clientes HTTP salientes ni BD persistente.
+
 **Verificar:**
 - [ ] `pool_pre_ping` o ping periódico para detectar conexiones muertas.
 - [ ] `pool_recycle` configurado (BD cierra conexiones inactivas).
@@ -136,6 +200,16 @@ apropiado.
 Se usa caché en las capas apropiadas: en proceso para datos de configuración
 inmutables, remoto (Redis) para compartido, HTTP para clientes.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/middleware/**`, `**/cache/**`
+**Patrones:**
+- `(lru-cache|node-cache|memoizee|cachetools|@nestjs/cache-manager)` # cache in-process
+- `(redis|ioredis|aioredis|node-redis|memcached)` # cache remoto
+- `Cache-Control[\s\S]{0,100}(public|private|max-age)` # cache HTTP
+- `\bttl\s*[:=]\s*\d+|expiresIn\s*:\s*\d+` # TTL configurado
+- `cache.*key.*[\$\{].*user.*[\$\{].*locale|cache.*key.*v\d+` # key con dimensiones
+
+**Señal de N/A:** sistema sin necesidad de caché (latencia ya aceptable).
+
 **Verificar:**
 - [ ] Caché in-process con TTL y tamaño máximo (LRU) para valores muy consultados.
 - [ ] Caché distribuido (Redis/Memcached) con política de invalidación.
@@ -149,6 +223,16 @@ inmutables, remoto (Redis) para compartido, HTTP para clientes.
 
 La invalidación ocurre en las mutaciones; no se sirven datos obsoletos en flujos
 críticos.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/cache/**`, `**/repositories/**`
+**Patrones:**
+- `(invalidate|del|delete|evict|clear)Cache|cache\.del\(`  # invalidación
+- `cache\.set\([^)]+\)(?![\s\S]{0,200}(ttl|expire))`        # set sin TTL
+- `(stale-while-revalidate|swr)`           # SWR pattern
+- `cache\s*[:=].*v\d+:|version\s*:|:v\d+:` # versionado en key
+- `\bttl\s*[:=]\s*-1|expire.*0|forever`    # TTL infinito (revisar)
+
+**Señal de N/A:** sistema sin caché de datos mutables.
 
 **Verificar:**
 - [ ] Mutation → invalidate relevant keys.
@@ -167,6 +251,16 @@ críticos.
 
 Cuando una key expira, no todos los workers reconstruyen simultáneamente.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/cache/**`, `**/services/**`
+**Patrones:**
+- `(singleflight|dataloader|p-memoize|asyncio\.Lock)` # patrón singleflight
+- `(jitter|randomize.*ttl|ttl\s*[+\-]\s*Math\.random)` # jitter en TTL
+- `\bttl\s*[:=]\s*\d{3,}\s*[*]\s*\(1\s*[+\-]` # TTL con variación
+- `redis\.(set|setex)[\s\S]{0,500}(NX|XX|EX)`  # locks distribuidos
+- `(staleWhileRevalidate|stale-while-revalidate)` # SWR
+
+**Señal de N/A:** caché con baja concurrencia o sin reconstrucción cara.
+
 **Verificar:**
 - [ ] Lock por key al regenerar (singleflight pattern).
 - [ ] Jitter en TTLs para evitar expiración simultánea.
@@ -180,6 +274,17 @@ Cuando una key expira, no todos los workers reconstruyen simultáneamente.
 **Severidad:** high · **Aplica a:** backend
 
 Los handlers HTTP no hacen trabajo prolongado; lo mandan a una cola/worker.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/handlers/**`, `**/controllers/**`, `**/workers/**`, `**/queues/**`, `**/jobs/**`
+**Patrones:**
+- `(bullmq|bull|celery|sidekiq|rq|sqs|rabbitmq|kafka|pgmq)` # libs de cola
+- `\.add\(['"]|\.enqueue\(|\.dispatch\(|\.delay\(` # encolado de jobs
+- `for[\s\S]{0,500}sendMail\(|forEach[\s\S]{0,500}sendMail` # loops síncronos pesados
+- `setTimeout\([\s\S]{0,200}\d{4,}\)`      # delays largos en handler
+- `(202|Accepted)[\s\S]{0,200}(taskId|jobId|task_id)` # respuesta async correcta
+- `dead[_-]?letter|DLQ|retries\s*:`        # DLQ y retry config
+
+**Señal de N/A:** servicio sin operaciones que excedan ~1s por request.
 
 **Verificar:**
 - [ ] Operaciones > 1-2 s (export, análisis, email batch) van a cola.
@@ -197,6 +302,16 @@ Los handlers HTTP no hacen trabajo prolongado; lo mandan a una cola/worker.
 
 Los jobs programados son idempotentes y manejan overlapping.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/cron/**`, `**/jobs/**`, `**/scheduled/**`, `**/k8s/**/*.yaml`, `**/cronjob*.yaml`
+**Patrones:**
+- `(node-cron|cron|@nestjs/schedule|APScheduler|celery\.beat|pg-cron)` # libs cron
+- `(setLock|acquireLock|distributed[_-]?lock|redlock|advisory_lock)` # lock distribuido
+- `kind:\s*CronJob|schedule:\s*['"][\d\*\s/]+['"]` # k8s cronjob
+- `INSERT[\s\S]{0,200}ON\s+CONFLICT|MERGE\s+INTO`  # upsert idempotente
+- `concurrencyPolicy\s*:\s*(Forbid|Replace)` # k8s anti-overlap
+
+**Señal de N/A:** sistema sin tareas programadas.
+
 **Verificar:**
 - [ ] Job puede correr dos veces sin efectos duplicados.
 - [ ] Lock distribuido impide doble ejecución simultánea cuando importa.
@@ -211,6 +326,17 @@ Los jobs programados son idempotentes y manejan overlapping.
 
 El proceso tiene límites de memoria y se monitorea crecimiento/leaks.
 
+**Dónde buscar:** `**/k8s/**/*.yaml`, `Dockerfile`, `**/values*.yaml`, `**/*.{ts,js,py,go}`, `**/observability/**`
+**Patrones:**
+- `resources:[\s\S]{0,200}memory:\s*['"]?\d+(Mi|Gi)` # k8s memory limit
+- `--max-old-space-size|NODE_OPTIONS=.*max-old-space` # límite Node.js
+- `(prom-client|prometheus_client|datadog|newrelic).*memory` # métricas mem
+- `process\.memoryUsage\(\)|psutil\.Process\(\)` # observación de uso
+- `OOMKilled|OOM\s+kill`                   # eventos OOM
+- `heapdump|heap-snapshot|gc-stats`        # diagnóstico
+
+**Señal de N/A:** sin orquestador con límites configurables (script CLI corto).
+
 **Verificar:**
 - [ ] Cgroup/container con memory limit.
 - [ ] Métricas de memoria por proceso en dashboards.
@@ -223,6 +349,16 @@ El proceso tiene límites de memoria y se monitorea crecimiento/leaks.
 **Severidad:** medium · **Aplica a:** backend
 
 No se acumulan listas/maps sin límite en memoria.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/cache/**`, `**/handlers/**`
+**Patrones:**
+- `(let|const|var)\s+\w+\s*=\s*\[\][\s\S]{0,500}\.push\(` # array que crece sin límite
+- `Map\(\)|new\s+Map\(\)|dict\(\)|\{\}[\s\S]{0,500}\[\w+\]\s*=` # mapa que crece
+- `lru-cache|node-cache|cachetools\.LRUCache` # estructura con límite (positivo)
+- `\.readAll\(|\.read\(\)\.split` # lectura sin límite de stream
+- `maxLength|maxSize|limit\s*:\s*\d+`      # límites configurados (positivo)
+
+**Señal de N/A:** servicio sin acumulación de estado (puramente request-response sin caches).
 
 **Verificar:**
 - [ ] Buffers en memoria con tamaño máximo.
@@ -239,6 +375,17 @@ No se acumulan listas/maps sin límite en memoria.
 Las queries no se multiplican en loops. Los ORM usan eager loading cuando
 corresponde.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/repositories/**`, `**/controllers/**`
+**Patrones:**
+- `\.forEach\(\s*async[\s\S]{0,200}await[\s\S]{0,200}(find|query)` # await + find en forEach
+- `for\s*\(.*of[\s\S]{0,200}await[\s\S]{0,200}(findOne|findById|find\()` # N+1 explícito
+- `\.map\(\s*async[\s\S]{0,200}await[\s\S]{0,200}repository\.` # map async con query
+- `(joinedload|selectinload|include\s*:|prefetch_related|JoinTable)` # eager loading (positivo)
+- `(django-debug-toolbar|bullet|query-counter)` # detección N+1
+- `LIMIT\s+1[\s\S]{0,200}LIMIT\s+1[\s\S]{0,200}LIMIT\s+1` # múltiples queries unitarias
+
+**Señal de N/A:** sistema sin BD relacional ni ORM.
+
 **Verificar:**
 - [ ] Revisión de handlers que iteran y consultan en cada iteración.
 - [ ] Herramientas (django-debug-toolbar, bullet, log de queries lentas) detectando N+1.
@@ -252,6 +399,17 @@ corresponde.
 **Severidad:** high · **Aplica a:** backend
 
 Los listados paginan (ver `API-PAGE-001`) y usan índices apropiados.
+
+**Dónde buscar:** `**/*.{ts,js,py,sql}`, `**/repositories/**`, `**/services/**`, `**/migrations/**`
+**Patrones:**
+- `(SELECT|find|findAll|findMany)[\s\S]{0,500}(?!LIMIT|take|limit)` # consulta sin LIMIT
+- `LIMIT\s+\d+|take\s*:\s*\d+|limit\s*:\s*\d+|page_size`  # paginación (positivo)
+- `OFFSET\s+\d{4,}`                        # offsets grandes (revisar cursor)
+- `ORDER\s+BY[\s\S]{0,100}LIMIT`           # listado ordenado (verificar índice)
+- `EXPLAIN\s+(ANALYZE\s+)?SELECT`          # uso de EXPLAIN
+- `@Index|CREATE\s+INDEX`                  # índices explícitos
+
+**Señal de N/A:** sistema sin endpoints de listado o con datasets pequeños fijos.
 
 **Verificar:**
 - [ ] Listados con LIMIT/OFFSET razonables o cursor.
@@ -267,6 +425,16 @@ Los listados paginan (ver `API-PAGE-001`) y usan índices apropiados.
 
 Métricas RED (Rate, Errors, Duration) por endpoint.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/middleware/**`, `**/observability/**`, `**/metrics/**`, `**/k8s/**`
+**Patrones:**
+- `(prom-client|prometheus_client|micrometer|@opentelemetry/api-metrics)` # libs métricas
+- `(Histogram|histogram|Summary|summary)\(` # histograma de latencia
+- `(p50|p95|p99|quantile|percentile)`      # percentiles
+- `(slo|sli|error.budget)`                 # SLOs definidos
+- `request_duration|http_request_duration|response_time` # métrica común
+
+**Señal de N/A:** servicio interno sin SLOs ni observabilidad establecida.
+
 **Verificar:**
 - [ ] Histogramas de latencia por endpoint.
 - [ ] Alertas ante regresión de p95/p99.
@@ -281,6 +449,15 @@ Métricas RED (Rate, Errors, Duration) por endpoint.
 
 Hay tracing que permite identificar spans lentos entre servicios.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/middleware/**`, `**/observability/**`, `**/tracing.*`
+**Patrones:**
+- `(@opentelemetry/api|@opentelemetry/sdk|opentracing|jaeger|zipkin|datadog-trace|elastic-apm)` # libs tracing
+- `(startSpan|tracer\.start|with\s+tracer\.start_as_current_span|trace\.SpanFromContext)` # spans
+- `(traceparent|x-b3-traceid|datadog-trace-id)` # propagación de contexto
+- `instrument(express|fastify|koa|nestjs|fastapi|django|flask)` # auto-instrumentación
+
+**Señal de N/A:** monolito de un solo servicio sin necesidad de tracing distribuido.
+
 (Ver `10-observabilidad/03-trazas-alertas.md`.)
 
 ---
@@ -294,6 +471,16 @@ Las funciones ejecutadas en el camino crítico (por request, por evento, dentro
 de loops sobre colecciones) tienen complejidad identificada. Una rutina O(n²)
 con n = 1.000 ejecutada 100 veces/segundo puede colapsar el servidor aunque
 en desarrollo con n = 10 parezca instantánea.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/handlers/**`, `**/utils/**`
+**Patrones:**
+- `for[\s\S]{0,200}for\s*\([^)]*[\s\S]{0,500}\.(includes|indexOf|find)\(` # bucle anidado con búsqueda lineal
+- `\.includes\([\s\S]{0,200}\.includes\(`  # múltiples includes en cadena
+- `\.sort\(\s*\([^)]+\)\s*=>[\s\S]{0,200}(parseInt|parse|toLowerCase|split)` # comparador con parsing
+- `\.find\([^)]+\)[\s\S]{0,500}\.find\(`   # múltiples finds (probable n*m)
+- `\.filter\([\s\S]{0,200}\.includes\(`    # intersección O(n*m)
+
+**Señal de N/A:** funciones con datasets fijos pequeños (< 50 elementos) no expuestas a usuario.
 
 **Verificar:**
 - [ ] Las funciones de transformación/filtrado sobre colecciones en hot paths tienen complejidad ≤ O(n log n).
@@ -316,6 +503,17 @@ en desarrollo con n = 10 parezca instantánea.
 La elección de estructura de datos determina la complejidad de cada operación.
 Usar un array para búsquedas repetidas transforma O(1) en O(n); dentro de un
 loop, el resultado acumulado es O(n²).
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/handlers/**`, `**/utils/**`
+**Patrones:**
+- `for[\s\S]{0,200}\.find\(\s*\w+\s*=>\s*\w+\.id\s*===` # find por id en loop (usar Map)
+- `for[\s\S]{0,200}\.includes\(`           # includes en loop (usar Set)
+- `\.filter\([^)]+\)\.length\s*[><]\s*0`   # filter().length en lugar de some()
+- `\.shift\(\)`                            # O(n) en arrays largos
+- `\.unshift\(`                            # O(n) por inserción
+- `new\s+(Set|Map)\(`                      # uso correcto (positivo)
+
+**Señal de N/A:** código sin loops sobre colecciones con búsquedas internas.
 
 **Verificar:**
 - [ ] Membership checks frecuentes usan `Set` (`set.has(id)`) en lugar de `Array.includes()` / `array.find()`.
@@ -360,6 +558,17 @@ La concatenación `str += item` en un loop crea una nueva cadena inmutable en
 cada iteración: O(n²) de tiempo y memoria. Para n = 10.000 ítems genera ~50 MB
 de strings intermedias que el GC debe colectar.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/exports/**`, `**/templates/**`, `**/services/**`, `**/utils/**`
+**Patrones:**
+- `for[\s\S]{0,200}\w+\s*\+=\s*['"\`]`     # str += en loop
+- `forEach\([\s\S]{0,500}\w+\s*\+=`        # forEach con concatenación
+- `query\s*\+=\s*['"]`                     # SQL construido con +=
+- `\.push\([\s\S]{0,200}\.join\(`          # patrón correcto (positivo)
+- `Buffer\.concat\(|stream\.write`         # buffers/streams (positivo)
+- `(handlebars|ejs|pug|nunjucks|jinja2|mustache)` # template engines
+
+**Señal de N/A:** sin generación de strings grandes en loops.
+
 **Verificar:**
 - [ ] La construcción de strings grandes usa `Array.push()` + `.join()`, `Buffer`, streams o `StringBuilder` equivalente.
 - [ ] Generación de CSV, SQL multi-row o HTML usa buffer de partes, no concatenación directa.
@@ -379,6 +588,17 @@ de strings intermedias que el GC debe colectar.
 Los algoritmos recursivos sobre datos de entrada del usuario (árboles, grafos,
 JSON anidado) deben tener profundidad máxima explícita. En Node.js, la recursión
 síncrona profunda bloquea el event loop para todos los requests simultáneos.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/parsers/**`, `**/utils/**`, `**/handlers/**`
+**Patrones:**
+- `function\s+(\w+)[\s\S]{0,500}\1\(`      # función llamándose a sí misma
+- `def\s+(\w+)[\s\S]{0,500}\1\(`           # idem python
+- `(?<!max)Depth|maxDepth\s*[:=]\s*\d+`    # parámetro maxDepth (positivo)
+- `setImmediate\(|process\.nextTick\(`     # yields al event loop (positivo)
+- `(traverse|walk|flatten|deepClone|deepMerge)` # operaciones recursivas típicas
+- `JSON\.parse\([^)]+\)(?![\s\S]{0,100}depth)` # parse sin protección de profundidad
+
+**Señal de N/A:** sistema sin entrada del usuario que sea estructura recursiva.
 
 **Verificar:**
 - [ ] Toda recursión sobre input del usuario tiene un parámetro `maxDepth` con valor razonable (≤ 50–100 en la mayoría de casos).
@@ -401,6 +621,17 @@ Una cadena `.filter().map().reduce()` sobre un array realiza múltiples pasadas
 completas y crea arrays intermedios. Con colecciones grandes puede unificarse en
 una sola pasada. Para datasets que superan la RAM disponible, la respuesta es el
 procesamiento en streaming.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/services/**`, `**/repositories/**`, `**/handlers/**`
+**Patrones:**
+- `\.filter\([^)]+\)\.filter\(`            # múltiples filter encadenados
+- `\.map\([^)]+\)\.filter\([^)]+\)\.map\(` # cadena larga
+- `\.find\(\{\}\)|findAll\(\)|repository\.find\(\{\}\)` # find sin where
+- `\.slice\(\s*\d+\s*,\s*\w+\.length\)`    # paginación en memoria
+- `(generators?|yield|iter\(|itertools)`   # lazy iteration (positivo)
+- `cursor\(|stream\(|pipeline\(`           # streaming de BD
+
+**Señal de N/A:** sistema con colecciones siempre pequeñas (< 100 elementos).
 
 **Verificar:**
 - [ ] Cadenas de métodos sobre colecciones de miles de elementos se revisan para unificar cuando el impacto es medible.
@@ -425,6 +656,17 @@ procesamiento en streaming.
 de alto throughput. Para respuestas estructuradas y repetitivas se puede reducir
 el costo con schemas pre-compilados o formatos más eficientes.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/handlers/**`, `**/middleware/**`, `**/serializers/**`
+**Patrones:**
+- `JSON\.parse\(\s*JSON\.stringify\(`      # deep clone con JSON
+- `new\s+Ajv\(\)[\s\S]{0,200}\.compile\(`  # compile en handler (revisar scope)
+- `z\.object\([^)]+\)\.parse\(`            # zod parse en hot path
+- `(fast-json-stringify|protobufjs|@msgpack/msgpack|msgpack-lite|avsc)` # alternativas eficientes
+- `structuredClone\(`                      # deep clone correcto (positivo)
+- `serializer\(|toJSON\(\)|serialize\(`    # serialización custom
+
+**Señal de N/A:** API con throughput bajo donde JSON.stringify no es bottleneck.
+
 **Verificar:**
 - [ ] `JSON.stringify` en hot paths revisado: ¿el resultado puede cachearse si el input no cambia entre requests?
 - [ ] Para respuestas de alto volumen con schema estable: `fast-json-stringify` con schema pre-compilado (2–5× más rápido que `JSON.stringify` genérico).
@@ -445,6 +687,16 @@ el costo con schemas pre-compilados o formatos más eficientes.
 Las optimizaciones de rendimiento deben basarse en datos de profiling reales,
 no en intuición. El código complejo "por rendimiento" sin evidencia de bottleneck
 es deuda técnica sin beneficio medible.
+
+**Dónde buscar:** `**/benchmarks/**`, `**/perf/**`, `package.json`, `Makefile`, `**/*.{ts,js,py,go}`, `**/docs/**`
+**Patrones:**
+- `(clinic|0x|py-spy|pprof|async-profiler|autocannon|k6|wrk|hyperfine)` # tools profiling
+- `//\s*optimi[sz]ed?[\s\S]{0,200}(?!benchmark|measure)` # comentario de "optimizado" sin medición
+- `//\s*HACK|//\s*PERF|//\s*OPTIMIZE`      # comentarios de optimización
+- `console\.time\(|performance\.now\(\)`   # benchmarks ad hoc
+- `before\s*:|after\s*:|baseline`          # comparativas de medición
+
+**Señal de N/A:** sistema sin requisitos de performance medidos ni bottlenecks reportados.
 
 **Verificar:**
 - [ ] Antes de optimizar un componente se mide su impacto real: profiling en producción o con load test representativo.

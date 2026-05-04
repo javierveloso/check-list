@@ -15,6 +15,13 @@
 El usuario puede solicitar copia de los datos que se tienen sobre él. El
 servicio responde en el plazo legal (1 mes en GDPR, típicamente).
 
+**Dónde buscar:** `**/users/**`, `**/customers/**`, `**/*.{ts,js,py,go}`, `**/routes/**`, `**/controllers/**`
+**Patrones:**
+- `(export.?data|download.?data|access.?request|gdpr|dsar|subject.?access)`     # endpoint de acceso
+- `\b(GET|POST).*\/(me|account)\/(export|data|download)`     # rutas típicas
+- `verify.*identity|reauth.*before.*export`     # verificación de identidad antes de entregar
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Endpoint / flujo de "descargar mis datos" disponible.
 - [ ] La copia incluye datos de todas las áreas (perfil, actividad, preferencias, contenidos).
@@ -29,6 +36,13 @@ servicio responde en el plazo legal (1 mes en GDPR, típicamente).
 Los datos se entregan en formato estructurado y legible (JSON, CSV) que
 permita portabilidad a otro servicio.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/export*`, `**/portability*`
+**Patrones:**
+- `Content-Type.*(application/json|text/csv)`     # formato estándar
+- `JSON\.stringify|csv\.write|to_csv|to_json`     # serialización
+- `encoding.*utf-?8|charset=utf-?8`     # encoding declarado
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Formato estándar (JSON, CSV con headers).
 - [ ] Archivos con encoding claro (UTF-8).
@@ -42,6 +56,13 @@ permita portabilidad a otro servicio.
 **Severidad:** high · **Tags:** `gdpr-art-16` · **Aplica a:** backend · frontend
 
 Hay UI/endpoint para que el usuario actualice los campos de su perfil.
+
+**Dónde buscar:** `**/users/**`, `**/profile/**`, `**/account/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `\b(PUT|PATCH).*\/(me|profile|account|users)`     # endpoints de update
+- `update.*profile|edit.*account|patch.*user`     # handlers
+- `cache.*invalidate|invalidate.*cache.*user`     # propagación a caches
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Campos modificables accesibles desde la UI.
@@ -58,6 +79,14 @@ Hay UI/endpoint para que el usuario actualice los campos de su perfil.
 
 El usuario puede solicitar el borrado de sus datos, salvo cuando una base legal
 obliga conservar (contabilidad, prevención de fraude, etc.).
+
+**Dónde buscar:** `**/users/**`, `**/account/**`, `**/*.{ts,js,py,go}`, `**/migrations/**`
+**Patrones:**
+- `(delete.?account|erase.?data|right.?to.?be.?forgotten|gdpr.?delete)`     # endpoint de borrado
+- `\bDELETE\b.*\/(me|account|users\/:?id)`     # ruta DELETE
+- `deleted_?at|soft.?delete`     # soft delete (verificar si hay purge final)
+- `purge.*job|hard.?delete.*after|retention.*expired`     # job de purga definitivo
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Endpoint/flujo para solicitar borrado.
@@ -77,6 +106,13 @@ obliga conservar (contabilidad, prevención de fraude, etc.).
 
 Hay claridad sobre qué se borra y qué no cuando el usuario solicita borrado.
 
+**Dónde buscar:** `**/migrations/**`, `**/*.sql`, `**/models/**`, `**/entities/**`
+**Patrones:**
+- `ON\s+DELETE\s+(CASCADE|SET\s+NULL|RESTRICT)`     # política de FK
+- `cascade.*delete|onDelete:\s*['"]?CASCADE`     # ORM cascade
+- `user_?id.*REFERENCES`     # tablas con FK a users que requieren plan de borrado
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Mapa de "qué tablas/sistemas se tocan al borrar".
 - [ ] Datos compartidos (ej: contenido público que el usuario creó) tratados según la política (anonimizar vs borrar).
@@ -89,6 +125,13 @@ Hay claridad sobre qué se borra y qué no cuando el usuario solicita borrado.
 
 Cuando hay razón legítima para conservar (estadísticas, fraude), se anonimiza
 (no solo pseudonimiza) cuando sea posible.
+
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/migrations/**`, `**/jobs/**`
+**Patrones:**
+- `anonymize|anonymise|pseudonymize|hash.*pii|k_?anonymity`     # técnicas
+- `crypto\.createHash|hashlib|bcrypt`     # hashing aplicado a PII
+- `aggregate.*by|groupBy.*count`     # agregación
+**Señal de N/A:** el repo no conserva datos derivados de usuarios borrados.
 
 **Verificar:**
 - [ ] Técnicas: agregación, k-anonymity, differential privacy, hashing con salt global irreversible.
@@ -105,6 +148,13 @@ Cuando hay razón legítima para conservar (estadísticas, fraude), se anonimiza
 El usuario puede oponerse a tratamientos basados en interés legítimo o para
 marketing directo.
 
+**Dónde buscar:** `**/*.{ts,js,py,jsx,tsx}`, `**/email/**`, `**/preferences/**`, `**/templates/**`
+**Patrones:**
+- `unsubscribe|opt[_-]?out|marketing.*preferences`     # canal de oposición
+- `\{\{.*unsubscribe.*\}\}|<a[^>]*href=["'][^"']*unsubscribe`     # link en cada email
+- `notification.*preferences|email.*preferences`     # granularidad
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Opt-out claro para marketing/comunicaciones promocionales.
 - [ ] Unsubscribe link en cada email promocional, que funcione en un clic.
@@ -119,6 +169,13 @@ marketing directo.
 El usuario puede pedir que sus datos se "pausen" mientras se resuelve una
 disputa (se conservan pero no se procesan activamente).
 
+**Dónde buscar:** `**/users/**`, `**/*.{ts,js,py,go}`, `**/migrations/**`
+**Patrones:**
+- `processing_?(restricted|paused|locked)|account_?(suspended|frozen)`     # flag de limitación
+- `legal_?hold|dispute.*flag`     # estados de pausa
+- `if\s*\(.*restricted.*\).*continue|skip.*if.*restricted`     # exclusión en pipelines
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
+
 **Verificar:**
 - [ ] Mecanismo para flagear cuentas como "en limitación".
 - [ ] El procesamiento en esas cuentas se detiene (ej: exclusión de analytics, envíos).
@@ -131,6 +188,13 @@ disputa (se conservan pero no se procesan activamente).
 **Severidad:** medium · **Tags:** `gdpr-art-20` · **Aplica a:** backend
 
 El usuario puede exportar sus datos para llevarlos a otro proveedor.
+
+**Dónde buscar:** `**/users/**`, `**/*.{ts,js,py,go}`, `**/export*`, `**/portability*`
+**Patrones:**
+- `(export.?data|download.?my.?data|portability)`     # endpoint
+- `\.zip|\.json|\.csv|\.xml`     # formato exportable
+- `Content-Disposition.*attachment`     # entrega como archivo
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Formato estructurado, legible por máquina (JSON, CSV, formato del dominio si hay estándar).
@@ -152,6 +216,13 @@ usuario debe poder:
 - Solicitar intervención humana.
 - Impugnar la decisión.
 
+**Dónde buscar:** `**/*.{ts,js,py,go}`, `**/llm/**`, `**/ai/**`, `**/scoring/**`, `**/decisions/**`
+**Patrones:**
+- `score\s*[<>=]|risk_?score|credit_?score|decision.*automated`     # decisiones automatizadas
+- `import.*(openai|anthropic|sklearn|tensorflow|xgboost)`     # modelos que toman decisiones
+- `appeal|review.*request|human.*review|manual.*override`     # canal de apelación
+**Señal de N/A:** el sistema no toma decisiones automatizadas con efecto legal/significativo (todo output va a revisión humana o es informativo).
+
 **Verificar:**
 - [ ] Se identifican todas las decisiones automatizadas significativas.
 - [ ] La política de privacidad las menciona.
@@ -165,6 +236,13 @@ usuario debe poder:
 
 Cuando un output es generado por IA, se informa al usuario (etiqueta, disclaimer).
 
+**Dónde buscar:** `**/*.{tsx,jsx,vue,svelte}`, `**/components/**`, `**/llm/**`
+**Patrones:**
+- `generated.?by.?ai|ai.?generated|powered.?by.?(gpt|claude|llm)`     # disclaimer en UI
+- `<Badge[^>]*ai|<Tag[^>]*ai`     # etiquetas en componentes
+- `disclaimer|caveat|may.*contain.*errors`     # texto de limitaciones
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 (Ver también `07-ia-llm/04-confiabilidad-costos.md`.)
 
 ---
@@ -176,6 +254,13 @@ Cuando un output es generado por IA, se informa al usuario (etiqueta, disclaimer
 
 Hay un canal oficial (email, formulario, settings) donde el usuario ejerce sus
 derechos. Se responde en el plazo legal.
+
+**Dónde buscar:** `privacy.md`, `**/contact*`, `**/forms/**`, `**/*.{tsx,jsx,vue}`
+**Patrones:**
+- `privacy@|dpo@|gdpr@|datos@`     # buzón dedicado
+- `data.?subject.?request|dsar.*form`     # formulario DSAR
+- `sla.*30.*days|response.*within|plazo.*30`     # SLA documentado
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Canal documentado y visible en la política de privacidad.
@@ -189,6 +274,13 @@ derechos. Se responde en el plazo legal.
 
 Verificar la identidad del solicitante es necesario, pero no debe exigir PII
 adicional desproporcionada.
+
+**Dónde buscar:** `**/auth/**`, `**/*.{ts,js,py,go}`, `**/dsar/**`
+**Patrones:**
+- `verify.*identity|require.*reauth|step.?up.*auth`     # reverificación con la sesión existente
+- `upload.*id|copy.*passport|copy.*dni`     # solicitud de documento (potencialmente excesiva)
+- `req\.user|session\.user`     # uso de auth existente
+**Señal de N/A:** el repo no procesa datos personales (no hay tablas/entidades `users|customers|patients|employees`).
 
 **Verificar:**
 - [ ] Se usa la autenticación existente cuando el usuario tiene cuenta.

@@ -16,6 +16,15 @@ Las contraseñas deben almacenarse únicamente como hashes producidos por un KDF
 diseñado para passwords (bcrypt, argon2id, scrypt o PBKDF2). Nunca en texto plano,
 MD5, SHA-1, ni SHA-2 crudo.
 
+**Dónde buscar:** `**/*.{ts,js,py,go,java,rb,php,cs}`, `**/auth/**`, `**/users/**`, `**/password*`, `**/login*`, `**/register*`
+**Patrones:**
+- `hashlib\.(md5|sha1|sha224|sha256|sha384|sha512)\([^)]*password`     # KDF débil sobre password (Python)
+- `crypto\.createHash\(\s*['"]?(md5|sha1|sha256|sha512)`                # Node crypto sobre password
+- `MessageDigest\.getInstance\(\s*"(MD5|SHA-1|SHA-256)"`                # Java MessageDigest crudo
+- `==.*(passwordHash|hashedPassword|pwd_hash)`                          # comparación no constant-time
+- `bcrypt[^a-z].*\b([1-9]|10|11)\b`                                     # bcrypt cost rounds < 12
+**Señal de N/A:** no hay tabla/entidad de `users|accounts|credentials` en el repo; la auth se delega a un IdP externo (Auth0, Cognito, Keycloak) y no hay almacenamiento propio de credenciales.
+
 **Verificar:**
 - [ ] Las contraseñas no aparecen jamás en texto plano en BD, logs, archivos, ni memoria más allá del momento de hash.
 - [ ] El algoritmo de hashing es bcrypt, argon2id, scrypt o PBKDF2 con parámetros recomendados.
@@ -39,6 +48,20 @@ API keys, claves de firma, credenciales de BD y cualquier secreto deben cargarse
 exclusivamente desde el entorno (variables de entorno, vault, secret manager).
 Nunca vivir en el repositorio.
 
+**Dónde buscar:** `**/*`, `.env*`, `**/config/**`, `**/settings/**`, `docker-compose*.yml`, `**/k8s/**`, `**/.github/workflows/**`
+**Patrones:**
+- `(?i)(api[_-]?key|secret[_-]?key|password|token)\s*[:=]\s*['"][^'"\s$]{8,}['"]`   # asignación literal con valor largo
+- `sk-[a-zA-Z0-9]{20,}`                                                  # OpenAI / Anthropic API key
+- `AKIA[0-9A-Z]{16}`                                                     # AWS access key ID
+- `ghp_[A-Za-z0-9]{36,}`                                                 # GitHub personal access token
+- `xox[baprs]-[A-Za-z0-9-]{10,}`                                         # Slack token
+- `eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}`        # JWT hardcodeado (3 segmentos base64url)
+- `-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----`                 # clave privada commiteada
+- `(postgres|mysql|mongodb|redis)://[^:]+:[^@\s]+@`                      # URL con credenciales
+- `os\.getenv\([^)]+\)\s*or\s*['"][^'"]{4,}['"]`                         # fallback default a literal (Python)
+- `process\.env\.\w+\s*\|\|\s*['"][^'"]{4,}['"]`                         # fallback default a literal (JS/TS)
+**Señal de N/A:** ninguna (este control aplica a todos los repos).
+
 **Verificar:**
 - [ ] No hay strings que parezcan tokens, API keys, o claves privadas en el código.
 - [ ] Los archivos `.env`, `.env.local`, `credentials.*`, `*.pem`, `*.key` están en `.gitignore`.
@@ -61,6 +84,13 @@ Nunca vivir en el repositorio.
 La aplicación debe negarse a arrancar (o fallar ruidosamente) si faltan secretos
 obligatorios o si detecta valores inseguros por defecto.
 
+**Dónde buscar:** `**/{bootstrap,main,index,app,server,config,env}.{ts,js,py,go}`, `**/config/**`, `**/env/**`
+**Patrones:**
+- `process\.env\.\w+\s*\|\|\s*['"](changeme|secret|admin|test|123|password)['"]`   # default trivial
+- `getenv\(\s*['"]\w+['"]\s*,\s*['"](changeme|secret|admin|test)['"]`              # default trivial Python
+- `z\.string\(\)\.min\(\s*1\s*[,)]`                                                # zod min(1) sobre secretos (umbral muy bajo)
+**Señal de N/A:** la app no consume variables de entorno propias (no hay `process.env`/`os.getenv`/`os.environ` en el código).
+
 **Verificar:**
 - [ ] Existe verificación en bootstrap que aborta si faltan secretos obligatorios.
 - [ ] Se rechazan valores por defecto triviales (`"changeme"`, `"secret"`, `"admin"`) en producción.
@@ -80,6 +110,16 @@ obligatorios o si detecta valores inseguros por defecto.
 Los tokens JWT deben estar firmados con un algoritmo asimétrico robusto
 (RS256, ES256, EdDSA) o HMAC fuerte (HS256 con clave ≥ 256 bits). El servidor
 debe fijar el algoritmo y rechazar cualquier otro.
+
+**Dónde buscar:** `**/*.{ts,js,py,go,java,rb}`, `**/auth/**`, `**/jwt/**`, `**/token*`
+**Patrones:**
+- `jwt\.decode\(\s*[^,)]+\)`                                  # decode sin verify
+- `jwt\.decode\([^)]*verify\s*[:=]\s*false`                   # decode con verify=false
+- `algorithms?\s*:\s*\[[^\]]*['"]?none['"]?`                  # acepta alg=none
+- `algorithms?\s*:\s*\[[^\]]*['"]HS256['"][^\]]*['"]none['"]` # mezcla HS256 + none
+- `verify_signature\s*=\s*False`                              # PyJWT verify off
+- `algorithm\s*=\s*['"]none['"]`                              # alg=none al firmar
+**Señal de N/A:** ningún import de `jsonwebtoken|jose|@nestjs/jwt|pyjwt|jose-jwt|jjwt|golang-jwt`.
 
 **Verificar:**
 - [ ] El algoritmo de firma está fijado explícitamente al decodificar; no se acepta `alg: none`.
@@ -103,6 +143,14 @@ debe fijar el algoritmo y rechazar cualquier otro.
 Los access tokens deben ser de corta vida (minutos). Los refresh tokens, si se
 usan, deben ser de un solo uso (rotación) y revocables.
 
+**Dónde buscar:** `**/auth/**`, `**/jwt/**`, `**/token*`, `**/*.{ts,js,py,go}`
+**Patrones:**
+- `expiresIn\s*:\s*['"]?(\d+[dwy]|\d{4,}h)['"]?`              # expiraciones largas (días/semanas)
+- `exp\s*[:=]\s*[^+]*\+\s*86400`                              # +24h o más en exp
+- `expiresIn\s*:\s*['"]?never['"]?`                           # tokens eternos
+- `refresh.*token` ausente cerca de `revoke|invalidate|blacklist|rotate`   # heurística: no hay rotación
+**Señal de N/A:** la auth no usa tokens auto-contenidos (sesiones server-side puras con cookie opaca).
+
 **Verificar:**
 - [ ] Los access tokens expiran en ~5–30 minutos.
 - [ ] Los refresh tokens rotan en cada uso (el viejo queda inválido tras emitirse uno nuevo).
@@ -120,6 +168,13 @@ usan, deben ser de un solo uso (rotación) y revocables.
 **Severidad:** high · **Tags:** `owasp-a07` · **Aplica a:** frontend
 
 Los tokens no deben quedar accesibles a JavaScript si se evita, para mitigar XSS.
+
+**Dónde buscar:** `**/*.{ts,tsx,js,jsx,vue,svelte}`, `**/auth/**`, `**/api/**`, `**/storage*`
+**Patrones:**
+- `localStorage\.setItem\(\s*['"][^'"]*(token|jwt|auth|access|refresh)`     # token en localStorage
+- `sessionStorage\.setItem\(\s*['"][^'"]*(token|jwt|auth|access|refresh)`   # token en sessionStorage
+- `document\.cookie\s*=.*(?!HttpOnly).*(token|jwt|auth)`                    # set-cookie desde JS sin HttpOnly
+**Señal de N/A:** no hay frontend en este repo (`stack_signal.has_frontend == false`).
 
 **Verificar:**
 - [ ] Los tokens de sesión se guardan en cookies `HttpOnly`, `Secure`, `SameSite=Lax` o `Strict`, o en almacenamiento seguro del dispositivo.
@@ -141,6 +196,13 @@ Los tokens no deben quedar accesibles a JavaScript si se evita, para mitigar XSS
 Al cambiar credenciales, tras detectar compromiso, o en logout explícito, todas
 las sesiones activas del usuario deben invalidarse.
 
+**Dónde buscar:** `**/auth/**`, `**/users/**`, `**/session*`, `**/password*`, `**/*.{ts,js,py,go}`
+**Patrones:**
+- `(changePassword|resetPassword|updatePassword)` sin coocurrir con `(invalidate|revoke|deleteSession|destroyAll)`
+- `logout` que solo borra cookie del cliente sin tocar tabla de sesiones server-side
+- ausencia de tabla/colección `sessions|refresh_tokens|active_tokens` cuando hay JWT con refresh
+**Señal de N/A:** la auth se delega 100% a IdP externo y este repo no maneja sesiones propias.
+
 **Verificar:**
 - [ ] Cambio de contraseña invalida todas las sesiones/tokens emitidos.
 - [ ] Logout global disponible y documentado.
@@ -157,6 +219,15 @@ las sesiones activas del usuario deben invalidarse.
 
 Cualquier cookie que transporte sesión, CSRF token, o información sensible debe
 tener `Secure`, `HttpOnly` (salvo CSRF tokens leídos por JS), y `SameSite`.
+
+**Dónde buscar:** `**/*.{ts,js,py,go,rb,java}`, `**/auth/**`, `**/middleware*`, `**/session*`, `**/cookie*`
+**Patrones:**
+- `setCookie\(|res\.cookie\(|set_cookie\(|cookies\.set\(`     # localizar emisión de cookies para inspeccionar flags
+- `cookie[^;]*;[^;]*SameSite=None(?![^;]*Secure)`             # SameSite=None sin Secure
+- `httpOnly\s*:\s*false`                                      # explícito false
+- `secure\s*:\s*false`                                        # explícito false (peligroso en prod)
+- ausencia de `httpOnly|httponly|HttpOnly` cerca de cookie de sesión
+**Señal de N/A:** la auth no usa cookies (solo Bearer en Authorization header).
 
 **Verificar:**
 - [ ] Todas las cookies de sesión tienen `Secure` en producción.
@@ -177,6 +248,12 @@ tener `Secure`, `HttpOnly` (salvo CSRF tokens leídos por JS), y `SameSite`.
 Las cuentas con permisos elevados (admin, billing, PII) deben exigir segundo factor.
 El resto deben tenerlo disponible opcionalmente.
 
+**Dónde buscar:** `**/auth/**`, `**/users/**`, `**/mfa/**`, `**/2fa/**`, `**/totp*`, `**/webauthn*`
+**Patrones:**
+- `(?i)otp|totp|mfa|2fa|authenticator|webauthn|fido2`         # buscar presencia de MFA en el repo
+- (ausencia de los anteriores en repo con rol admin) → posible FAIL
+**Señal de N/A:** la app no diferencia roles de usuario (todos tienen mismo permiso) y no maneja datos sensibles.
+
 **Verificar:**
 - [ ] Existe flujo de enrolamiento y verificación MFA (TOTP, WebAuthn, SMS como último recurso).
 - [ ] Cuentas admin no pueden operar sin MFA habilitado.
@@ -196,6 +273,12 @@ El resto deben tenerlo disponible opcionalmente.
 Los códigos de recuperación/single-use backup codes deben almacenarse hasheados y
 marcarse como usados al consumirlos.
 
+**Dónde buscar:** `**/mfa/**`, `**/auth/**`, `**/recovery*`, `**/backup*code*`
+**Patrones:**
+- `(recovery|backup).*code.*=\s*[a-zA-Z0-9-]{8,}`             # código en plain text en código/tests
+- ausencia de hashing al guardar `recovery_codes`
+**Señal de N/A:** la app no implementa códigos de recuperación (no hay MFA, o MFA delegada al IdP).
+
 **Verificar:**
 - [ ] Recovery codes se guardan hasheados, no en texto plano.
 - [ ] Cada código es de un solo uso.
@@ -210,6 +293,15 @@ marcarse como usados al consumirlos.
 
 Los endpoints de login y verificación MFA deben tener rate limiting por IP, por
 cuenta, y lockout temporal tras múltiples intentos fallidos.
+
+**Dónde buscar:** `**/auth/**`, `**/login*`, `**/middleware*`, `**/*.{ts,js,py,go}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `express-rate-limit|rate-limiter-flexible|@nestjs/throttler|slowapi|django-ratelimit|rack-attack`   # presencia de librería
+- (ausencia de los anteriores cerca de `/login|/auth/(exchange|refresh)|/mfa`) → posible FAIL
+- `windowMs?\s*:\s*\d{1,4}[^0-9]`                             # window muy corto (< 10s) — efectividad dudosa
+- `max\s*:\s*[5-9]?\d{3,}`                                    # max muy alto (> 1000 req/window) en endpoint de auth
+- `trust proxy.*true|trustProxy:\s*true` sin restricción      # confía en X-Forwarded-For sin allowlist
+**Señal de N/A:** el endpoint de login está delegado al IdP externo (este repo no expone `/login` ni `/auth/exchange`).
 
 **Verificar:**
 - [ ] Hay límite de intentos por minuto por IP y por usuario (ej: 5–10/min).
@@ -232,6 +324,13 @@ cuenta, y lockout temporal tras múltiples intentos fallidos.
 Las respuestas de login, registro, y recuperación de contraseña no deben revelar
 si un usuario existe.
 
+**Dónde buscar:** `**/auth/**`, `**/login*`, `**/register*`, `**/forgot-password*`, `**/users/**`
+**Patrones:**
+- `(?i)(user|usuario|email).*(not\s+found|no\s+existe|doesn[' ]?t\s+exist|inexistente)`     # mensaje específico
+- `404.*(?:user|account)|throw new NotFoundException.*user`   # diferenciación 401 vs 404 en login
+- mensajes diferentes para "password incorrecta" vs "user no existe"
+**Señal de N/A:** la auth es solo SSO/OAuth (no hay endpoint propio que reciba email+password).
+
 **Verificar:**
 - [ ] Respuesta de login fallida es la misma para "usuario no existe" y "password incorrecta".
 - [ ] "Recuperar contraseña" responde idéntico exista o no el email.
@@ -251,6 +350,14 @@ si un usuario existe.
 La comparación de hashes de contraseña, tokens CSRF, códigos OTP y API keys debe
 ser en tiempo constante.
 
+**Dónde buscar:** `**/auth/**`, `**/csrf*`, `**/otp*`, `**/api*key*`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `if\s*\(?\s*(stored|saved|expected|hash)\w*\s*==\s*(provided|input|user|received)\w*\s*\)?`   # == sobre secretos
+- `\.equals\(\s*(provided|input|received)`                    # equals (no constant-time) sobre secret
+- `strcmp\(.*token|password|secret`                           # strcmp sobre secretos (C/PHP)
+- ausencia de `hmac\.compare_digest|crypto\.timingSafeEqual|MessageDigest\.isEqual|secrets\.compare_digest`
+**Señal de N/A:** ningún módulo del repo compara secretos directamente (toda la verificación va por bcrypt/argon2 cuyo `.verify()` ya es constant-time).
+
 **Verificar:**
 - [ ] Se usa una función de comparación segura (`hmac.compare_digest`, `crypto.timingSafeEqual`, equivalente).
 - [ ] No se sale temprano de bucles de comparación byte-a-byte.
@@ -268,6 +375,14 @@ ser en tiempo constante.
 
 Todos los eventos de autenticación importantes deben quedar registrados en
 logs de auditoría (con retención definida en privacidad).
+
+**Dónde buscar:** `**/auth/**`, `**/users/**`, `**/audit*`, `**/security*`, `**/login*`
+**Patrones:**
+- `log\.(info|debug|warn|error)\([^)]*password`               # password en log (FAIL grave)
+- `console\.log\([^)]*(password|token|secret|otp)`            # idem JS
+- `logger.*\b(token|otp|secret|api_?key)\b`                   # secret en log
+- (ausencia de logs en handlers de `login|logout|password.*change|mfa`) → posible FAIL
+**Señal de N/A:** la auth se delega 100% al IdP externo, que ya genera audit log centralizado documentado.
 
 **Verificar:**
 - [ ] Se registra: login exitoso, login fallido, logout, cambio de password, habilitación MFA, emisión de tokens privilegiados.

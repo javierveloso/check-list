@@ -14,9 +14,19 @@
 #
 # Convención de IDs: <CATEGORIA>-<SUBCAT>-<NNN>, estables, no se renumeran.
 
-version: "2.0.0"
+version: "2.1.0"
 schema_version: 1
-last_updated: "2026-04-23"
+last_updated: "2026-05-03"
+
+# Changelog 2.1.0:
+#   - Añadidos campos opcionales en cada control (en .md, no en este índice):
+#       Dónde buscar  → globs para Glob
+#       Patrones      → regex para Grep
+#       Señal de N/A  → condición procesable para saltar el control
+#   - Nuevas guías: EXECUTION_GUIDE.md, REPORTING_GUIDE.md
+#   - Nuevas plantillas: REPORT.md.tpl, fix-plan.md.tpl, findings.schema.json
+#   - System prompts reutilizables en _prompts/ (auditor, pr-reviewer, fixer, coordinator)
+#   - Backward-compatible: los controles sin metadata enriquecida siguen siendo válidos
 
 # ---------------------------------------------------------------------------
 categories:

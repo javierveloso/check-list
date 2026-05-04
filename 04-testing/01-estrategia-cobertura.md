@@ -15,6 +15,12 @@
 El proyecto tiene una combinación que prioriza tests de integración (ROI alto)
 sin descuidar unit tests y una base mínima de E2E.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx,jsx}`, `**/__tests__/**`, `**/test/**`, `**/tests/**`, `*.{test,spec}.py`, `**/cypress/**`, `**/playwright/**`, `**/e2e/**`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana del ratio entre carpetas y nombres de suites)*
+
+**Señal de N/A:** repositorio sin ninguna carpeta o archivo de tests detectable (proyecto sin suite).
+
 **Verificar:**
 - [ ] Distribución razonable (ejemplo — ajustar al contexto): ~50-60% integración, ~25-30% unit, ~10-15% E2E, ~5% estáticos.
 - [ ] No hay una sola categoría dominando al 90%.
@@ -31,6 +37,16 @@ sin descuidar unit tests y una base mínima de E2E.
 
 Se mide cobertura; se exige un mínimo. Pero no se persigue un porcentaje a costa
 de tests sin valor.
+
+**Dónde buscar:** `jest.config.*`, `vitest.config.*`, `pytest.ini`, `pyproject.toml`, `.coveragerc`, `setup.cfg`, `**/.github/workflows/**`, `**/sonar-project.properties`
+**Patrones:**
+- `coverageThreshold`            # umbral configurado en jest/vitest
+- `--cov-fail-under=\d+`         # umbral en pytest-cov
+- `branches?\s*[:=]\s*\d+`       # umbral de branches
+- `--coverage`                   # cobertura activa en CI
+- `coverage-?(ignore|exclude)`   # exclusiones documentadas
+
+**Señal de N/A:** ningún archivo de configuración de testing en el repo (sin herramienta de cobertura instalable).
 
 **Verificar:**
 - [ ] Hay umbral mínimo de cobertura configurado (ej: 70% líneas, 80% branches).
@@ -49,6 +65,16 @@ de tests sin valor.
 
 Los PRs no se mergean sin tests verdes.
 
+**Dónde buscar:** `.github/workflows/**`, `.gitlab-ci.yml`, `azure-pipelines.yml`, `.circleci/config.yml`, `Jenkinsfile`, `bitbucket-pipelines.yml`
+**Patrones:**
+- `(npm|yarn|pnpm|pytest|go|cargo)\s+(test|run\s+test)`   # tests en CI
+- `required_status_checks|branch_protection`              # protección de rama
+- `it\.skip|xit\(|describe\.skip|test\.skip|@pytest\.mark\.skip`  # tests deshabilitados
+- `it\.only|fit\(|describe\.only|test\.only`              # focused tests commiteados
+- `continue-on-error:\s*true`                             # tests no bloqueantes
+
+**Señal de N/A:** repo sin pipelines de CI configurados (sin carpetas `.github/workflows`, `.gitlab-ci.yml`, etc.).
+
 **Verificar:**
 - [ ] CI corre todos los tests en cada push al PR.
 - [ ] Tests fallidos bloquean el merge (branch protection).
@@ -65,6 +91,16 @@ Los PRs no se mergean sin tests verdes.
 La suite que se corre localmente debe ser rápida (< 30 s para unit), o dejará
 de ejecutarse.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `jest.config.*`, `vitest.config.*`, `pytest.ini`
+**Patrones:**
+- `setTimeout\(.*,\s*\d{4,}\)`            # sleeps largos en tests
+- `time\.sleep\(\s*[1-9]\d*`              # sleeps en pytest
+- `await\s+sleep\(\s*\d{3,}`              # awaits con delays
+- `--maxWorkers|workers\s*[:=]|--parallel|-n\s+auto`  # paralelismo configurado
+- `--testTimeout|timeout\s*[:=]\s*\d{5,}` # timeouts altos en tests
+
+**Señal de N/A:** sin suite de tests medible o sin métricas de duración.
+
 **Verificar:**
 - [ ] Suite de unit corre en segundos.
 - [ ] Suite de integración en minutos, no horas.
@@ -77,6 +113,16 @@ de ejecutarse.
 **Severidad:** high · **Aplica a:** testing
 
 Los tests no dependen del orden ni del estado dejado por otros.
+
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/conftest.py`, `**/setup.ts`, `jest.config.*`
+**Patrones:**
+- `beforeAll\(`                              # setup compartido (verificar afterAll)
+- `let\s+\w+\s*;[\s\S]{0,200}beforeEach`     # variables de módulo mutadas
+- `randomize\s*[:=]\s*true|--random-order`   # orden aleatorio activo
+- `process\.env\.\w+\s*=`                    # mutación de env globales en tests
+- `global\.\w+\s*=`                          # estado global modificado
+
+**Señal de N/A:** sin tests detectables.
 
 **Verificar:**
 - [ ] Cada test configura su propio estado.
@@ -93,6 +139,16 @@ Los tests no dependen del orden ni del estado dejado por otros.
 **Severidad:** high · **Tags:** `flaky-tests` · **Aplica a:** testing
 
 El mismo test con la misma versión de código da el mismo resultado siempre.
+
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`, `**/conftest.py`
+**Patrones:**
+- `new\s+Date\(\)|Date\.now\(\)|datetime\.now\(\)|time\.time\(\)`  # tiempo real sin freeze
+- `Math\.random\(\)|random\.\w+\(`         # aleatoriedad sin seed
+- `crypto\.randomUUID|uuid\.uuid4`         # UUIDs no inyectables
+- `setTimeout\(.*,\s*\d{3,}\)|time\.sleep`  # sleeps para sincronizar
+- `fetch\(['"]http|axios\.\w+\(['"]http`   # llamadas a red externa sin mock
+
+**Señal de N/A:** sin tests detectables.
 
 **Verificar:**
 - [ ] Tiempo, randomness y IDs se inyectan / mockean.
@@ -112,6 +168,16 @@ El mismo test con la misma versión de código da el mismo resultado siempre.
 
 Los tests hacen asserts explícitos. No imprimen y esperan que el humano mire.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`
+**Patrones:**
+- `console\.(log|warn|info)\(.*\)`         # prints en lugar de asserts
+- `print\(`                                # prints en tests python
+- `expect\(.*\)\.toBeTruthy\(\)|toBeFalsy` # asserts débiles
+- `it\(['"][^'"]+['"]\s*,\s*(?:async\s+)?\(\s*\)\s*=>\s*\{\s*\}\)`  # test vacío
+- `assert\s+True\b|assert\s+1\b`           # asserts triviales
+
+**Señal de N/A:** sin tests detectables.
+
 **Verificar:**
 - [ ] Todos los tests tienen al menos un assert.
 - [ ] No hay tests que "validan" imprimiendo a stdout.
@@ -124,6 +190,12 @@ Los tests hacen asserts explícitos. No imprimen y esperan que el humano mire.
 
 Los tests se escriben con el código, no "después, cuando haya tiempo". Ese
 tiempo nunca llega.
+
+**Dónde buscar:** `**/*.{ts,js,tsx,py}`, `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `.github/PULL_REQUEST_TEMPLATE.md`, `CONTRIBUTING.md`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana del histórico de PRs y políticas)*
+
+**Señal de N/A:** repo sin historial de PRs ni convenciones documentadas.
 
 **Verificar:**
 - [ ] PRs con código nuevo incluyen tests.
@@ -139,6 +211,14 @@ tiempo nunca llega.
 
 Cada test distingue las tres fases (con líneas en blanco o comentarios si es
 útil).
+
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`
+**Patrones:**
+- `expect\([\s\S]{0,200}expect\([\s\S]{0,200}expect\(`  # múltiples asserts intercalados
+- `//\s*(arrange|act|assert)|#\s*(arrange|act|assert)`  # secciones marcadas
+- `it\(['"][^'"]{120,}['"]`               # nombre de test demasiado largo (varios comportamientos)
+
+**Señal de N/A:** sin tests detectables.
 
 **Verificar:**
 - [ ] Fase de setup (arrange) al principio.
@@ -158,6 +238,14 @@ Cada test distingue las tres fases (con líneas en blanco o comentarios si es
 Un test verifica un único comportamiento/expectativa. Múltiples assertions sobre
 el mismo comportamiento están bien; verificar múltiples comportamientos no.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`
+**Patrones:**
+- `it\(['"][^'"]+\s+and\s+[^'"]+['"]`     # nombre con "and" → varios comportamientos
+- `test\(['"][^'"]+\s+y\s+[^'"]+['"]`     # nombre con "y" en español
+- `it\(['"][^'"]+,\s*[^'"]+['"]`          # nombre con coma listando comportamientos
+
+**Señal de N/A:** sin tests detectables.
+
 **Verificar:**
 - [ ] El nombre del test describe un único comportamiento.
 - [ ] Si el test tiene "and" en el nombre, se considera dividirlo.
@@ -169,6 +257,15 @@ el mismo comportamiento están bien; verificar múltiples comportamientos no.
 **Severidad:** medium · **Aplica a:** testing
 
 El nombre del test cuenta la historia: contexto, acción, expectativa.
+
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`
+**Patrones:**
+- `(it|test)\(['"]test\d+['"]`            # nombres genéricos test1/test2
+- `(it|test)\(['"](foo|bar|baz|works|it works)['"]`  # nombres sin sentido
+- `def\s+test_(foo|bar|works|it_works)\b` # idem en pytest
+- `(it|test)\(['"][^'"]{1,15}['"]`        # nombres muy cortos sin contexto
+
+**Señal de N/A:** sin tests detectables.
 
 **Verificar:**
 - [ ] Patrón: `test_<cuando>_<haciendo_algo>_<espera_esto>`.
@@ -190,6 +287,15 @@ El nombre del test cuenta la historia: contexto, acción, expectativa.
 
 Cada unidad con lógica tiene tests para: escenario feliz, casos borde y errores.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`
+**Patrones:**
+- `describe\(['"][^'"]+['"]\s*,[\s\S]{0,500}\bit\(`   # describe con un solo it (probable falta de bordes)
+- `(toThrow|raises|assertRaises|pytest\.raises)`     # tests de errores presentes
+- `(empty|null|undefined|None|edge|boundary|invalid|limit)` # nombres que cubren bordes
+- `\.each\(\[|parametrize`                            # tests parametrizados (cubren múltiples casos)
+
+**Señal de N/A:** sin tests detectables o módulos sin lógica condicional.
+
 **Verificar:**
 - [ ] Caso feliz (los inputs más comunes funcionan).
 - [ ] Bordes: vacío, uno, muchos; límites de rango; nulos/opcionales.
@@ -203,6 +309,15 @@ Cada unidad con lógica tiene tests para: escenario feliz, casos borde y errores
 
 Cada bug reportado resulta en un test que lo reproduce antes de arreglarlo.
 
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `CHANGELOG.md`
+**Patrones:**
+- `regression\s+(for|test)|#\d+`          # tests enlazados a issues
+- `bug\s*[:#]?\s*\d+|issue\s*[:#]?\s*\d+` # referencia a bug fix
+- `fixes?\s+#\d+|closes?\s+#\d+`          # mensaje de commit con fix
+- `repro(duce|duction)?`                  # tests de reproducción
+
+**Señal de N/A:** repo nuevo sin historial de bugs ni issues cerradas.
+
 **Verificar:**
 - [ ] PR de bugfix incluye test que falla en main y pasa con el fix.
 - [ ] El test enlaza al issue (`# regression for #1234`).
@@ -214,6 +329,16 @@ Cada bug reportado resulta en un test que lo reproduce antes de arreglarlo.
 
 Para endpoints autenticados, hay tests para: sin auth, auth válida, auth
 insuficiente, cross-tenant.
+
+**Dónde buscar:** `**/*.{test,spec}.{ts,js,tsx}`, `*.{test,spec}.py`, `**/__tests__/**`, `**/e2e/**`, `**/integration/**`
+**Patrones:**
+- `expect\([^)]*\.status\)\.(toBe|toEqual)\(401\)`  # test de 401
+- `expect\([^)]*\.status\)\.(toBe|toEqual)\(403\)`  # test de 403
+- `assert\s+.*status_code\s*==\s*(401|403)`         # idem en pytest
+- `(without|sin|no)[\s_]auth|unauthorized`          # naming de tests sin auth
+- `cross[\s_-]?tenant|other[\s_]user|different[\s_]tenant`  # tests cross-tenant
+
+**Señal de N/A:** API completamente pública sin endpoints autenticados.
 
 **Verificar:**
 - [ ] 401 sin credenciales.
@@ -230,6 +355,16 @@ insuficiente, cross-tenant.
 
 Se genera reporte de cobertura en cada build.
 
+**Dónde buscar:** `package.json`, `pyproject.toml`, `setup.cfg`, `pytest.ini`, `jest.config.*`, `vitest.config.*`, `.github/workflows/**`, `codecov.yml`, `.coveragerc`
+**Patrones:**
+- `(coverage|nyc|c8|istanbul|jacoco|tarpaulin|pytest-cov)` # herramienta instalada
+- `--coverage|--cov(=|\s)`                # flag de cobertura
+- `codecov|coveralls|sonarcloud|sonarqube` # servicio de tracking
+- `lcov|cobertura|html-report|coverage-summary`  # formato de reporte
+- `branches?\s*[:=]`                      # cobertura de branches medida
+
+**Señal de N/A:** sin tests ni configuración de cobertura.
+
 **Verificar:**
 - [ ] Herramienta integrada (coverage.py/pytest-cov, Istanbul, JaCoCo, c8, tarpaulin).
 - [ ] El reporte se publica como artefacto o comentario en PR.
@@ -242,6 +377,15 @@ Se genera reporte de cobertura en cada build.
 **Severidad:** medium · **Aplica a:** testing
 
 Las áreas críticas tienen umbral propio, superior al general.
+
+**Dónde buscar:** `jest.config.*`, `vitest.config.*`, `pyproject.toml`, `.coveragerc`, `pytest.ini`, `sonar-project.properties`
+**Patrones:**
+- `coverageThreshold[\s\S]{0,500}(auth|payment|crypto|billing)` # umbral por path crítico
+- `coveragePathIgnorePatterns|--cov-config|omit\s*=`             # exclusiones explícitas
+- `(auth|payments?|crypto|billing|security)/[\s\S]{0,200}\d{2,3}` # path crítico con porcentaje
+- `generated|__generated__|\.pb\.|migrations`                     # exclusión de generated code
+
+**Señal de N/A:** repo sin áreas críticas claras (sin auth/pagos/crypto).
 
 **Verificar:**
 - [ ] `auth/`, `payments/`, `cryptography/` exigen ≥ 90%.

@@ -13,6 +13,15 @@
 
 Los logs se emiten como JSON con campos consistentes, no solo texto plano.
 
+**Dónde buscar:** `**/logger*`, `**/logging/**`, `**/middleware/**`, `**/*.{ts,js,py,go,java}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `console\.log\(`     # log no estructurado en JS/TS productivo
+- `\bprint\(`     # print en código Python productivo
+- `winston|pino|bunyan|loguru|structlog|logrus|zap`     # presencia de logger estructurado
+- `logger\.(info|warn|error|debug)\([\"']\{`     # JSON inline (señal positiva)
+- `format:\s*[\"']text[\"']|format:\s*[\"']plain[\"']`     # formato de texto plano configurado
+**Señal de N/A:** no hay logger configurado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Formato JSON con campos: `timestamp` (ISO 8601 UTC), `level`, `message`, `service`, `environment`.
 - [ ] Campos estándar de correlación: `request_id`, `trace_id`, `span_id`, `user_id` (pseudonimizado).
@@ -31,6 +40,15 @@ Los logs se emiten como JSON con campos consistentes, no solo texto plano.
 
 Cada evento va al nivel apropiado; el nivel de producción es INFO o superior.
 
+**Dónde buscar:** `**/logger*`, `**/logging/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `logger\.(debug|info|warn|error|fatal)\(`     # uso explícito de niveles
+- `level:\s*[\"'](debug|trace)[\"']`     # nivel debug/trace activo en config
+- `LOG_LEVEL\s*=\s*[\"']?(DEBUG|TRACE)`     # variable de entorno con debug en prod
+- `logger\([^.)]+\)`     # logger sin nivel (call directo)
+- `for\s+.*:\s*\n\s*logger\.info`     # log dentro de loop (riesgo log-spam)
+**Señal de N/A:** no hay logger configurado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] DEBUG: detalle solo útil en desarrollo.
 - [ ] INFO: eventos operacionales relevantes (login, creación de recurso).
@@ -47,6 +65,15 @@ Cada evento va al nivel apropiado; el nivel de producción es INFO o superior.
 Los logs de una operación incluyen contexto suficiente para diagnosticar sin
 reproducir.
 
+**Dónde buscar:** `**/logger*`, `**/middleware/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `request[_-]?id|trace[_-]?id|correlation[_-]?id`     # IDs de correlación presentes
+- `AsyncLocalStorage|contextvars|context\.WithValue`     # propagación de contexto
+- `duration_ms|elapsed_ms|took_ms`     # medición de duración
+- `tenant[_-]?id|user[_-]?id`     # IDs de dominio en logs
+- `logger\.(info|error)\([\"'][^\"']+[\"']\s*\)`     # log sin contexto adicional
+**Señal de N/A:** no hay logger configurado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Duration en ms para operaciones medibles.
 - [ ] IDs relevantes (request_id, user_id, tenant_id, recurso_id).
@@ -62,6 +89,15 @@ Los logs no contienen contraseñas, tokens, API keys, ni PII innecesaria.
 
 (Ver `SEC-CRYPTO-011`, `LLM-SEC-013`.)
 
+**Dónde buscar:** `**/logger*`, `**/logging/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `log.*\.(password|token|secret|api[_-]?key|authorization)`     # secretos en log
+- `logger\.\w+\([^)]*req\.body`     # body completo a log
+- `logger\.\w+\([^)]*\.(email|phone|ssn|rut|dni)`     # PII a log
+- `redact|sanitize|maskPII|scrub`     # capa de redacción (señal positiva)
+- `JSON\.stringify\(req\)|JSON\.stringify\(user\)`     # serialización completa de objetos sensibles
+**Señal de N/A:** no hay logger configurado en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Capa de redacción en el logger (campos allowlist/blocklist).
 - [ ] Errores de validación no reflejan el payload completo.
@@ -74,6 +110,15 @@ Los logs no contienen contraseñas, tokens, API keys, ni PII innecesaria.
 **Severidad:** medium · **Aplica a:** infra
 
 Los logs se envían a un backend centralizado con retención definida.
+
+**Dónde buscar:** `**/*.{ts,js,py,go,java}`, `**/k8s/**`, `**/helm/**`, `docker-compose*.yml`, `**/*.{tf,yaml}`
+**Patrones:**
+- `elasticsearch|loki|datadog|cloudwatch|splunk|fluentd|fluent-bit|vector`     # backend de logs
+- `retention[_-]?days|retention_in_days`     # retención configurada
+- `log_group|log_stream|index_pattern`     # destino centralizado
+- `stdout|stderr`     # log a stdout (idiomático para containers)
+- `rotateFiles|maxFiles|maxSize`     # rotación local (anti-señal si es el único destino)
+**Señal de N/A:** no hay logger configurado en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Stack de logs (Elastic, Loki, Datadog, CloudWatch) configurado.
@@ -89,6 +134,16 @@ Los logs se envían a un backend centralizado con retención definida.
 Errores no manejados en el frontend (render crashes, promesas rechazadas,
 excepciones globales) se capturan, se muestran al usuario de forma amigable
 y se envían a un sistema de observabilidad.
+
+**Dónde buscar:** `**/main.{ts,tsx,js,jsx}`, `**/app.{ts,tsx,js,jsx}`, `**/*ErrorBoundary*`, `package.json`
+**Patrones:**
+- `@sentry/(react|browser|vue)|@datadog/browser-rum|applicationinsights-web`     # SDK frontend
+- `addEventListener\([\"']error[\"']|addEventListener\([\"']unhandledrejection[\"']`     # listeners globales
+- `ErrorBoundary|componentDidCatch|errorCaptured`     # boundary en framework
+- `Sentry\.init|datadogRum\.init|appInsights\.loadAppInsights`     # inicialización
+- `console\.error\(`     # único reporte de error (anti-señal)
+- `sourcemaps?\s*[:=]\s*true|sentry-cli\s+sourcemaps`     # source maps subidos
+**Señal de N/A:** stack_signal.has_frontend == false
 
 **Verificar:**
 - [ ] `window.addEventListener('error', handler)` y `window.addEventListener('unhandledrejection', handler)` registrados en el entrypoint (`main.tsx`, `main.ts`).
@@ -115,6 +170,15 @@ y se envían a un sistema de observabilidad.
 Para cada endpoint crítico: **R**ate (req/s), **E**rrors (% 5xx), **D**uration
 (latencia p50/p95/p99).
 
+**Dónde buscar:** `**/middleware/**`, `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`, `package.json`, `requirements.txt`
+**Patrones:**
+- `prom-client|@opentelemetry/metrics|micrometer|statsd|datadog-metrics`     # SDK de métricas
+- `http_requests_total|http_request_duration`     # métricas RED estándar
+- `Histogram\(|Counter\(|new\s+Histogram|new\s+Counter`     # creación de métricas
+- `/metrics|prometheus_handler|prom\.register`     # endpoint de exposición
+- `route|method|status_code`     # labels RED
+**Señal de N/A:** no hay backend / endpoints HTTP en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Histogramas de latencia exportados con labels (endpoint, status).
 - [ ] Counters de requests y errores.
@@ -131,6 +195,15 @@ Para cada endpoint crítico: **R**ate (req/s), **E**rrors (% 5xx), **D**uration
 Para cada recurso (CPU, memoria, disco, pool de conexiones): Utilization,
 Saturation, Errors.
 
+**Dónde buscar:** `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`, `**/k8s/**`, `**/helm/**`, `**/*.{tf,yaml}`
+**Patrones:**
+- `node_exporter|cadvisor|process_cpu|process_memory`     # métricas de sistema
+- `pool\.size|pool\.idle|pool\.active|max_connections`     # pool DB
+- `queue_depth|queue_length|jobs_pending|jobs_active`     # cola de jobs
+- `gauge\(|new\s+Gauge`     # gauges para utilization/saturation
+- `cpu_usage|memory_usage|disk_usage`     # nombres de métricas USE
+**Señal de N/A:** no hay infra/recursos gestionados en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Uso (%) y saturación (wait) medidos.
 - [ ] Pool de BD: conexiones activas vs máximas.
@@ -144,6 +217,14 @@ Saturation, Errors.
 
 Además de métricas técnicas, se miden eventos clave del negocio.
 
+**Dónde buscar:** `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`, `**/analytics*`
+**Patrones:**
+- `track\(|trackEvent\(|analytics\.\w+\(`     # tracking de eventos negocio
+- `Counter\([\"'](signup|login|conversion|payment)`     # contadores de negocio
+- `mixpanel|amplitude|segment|posthog`     # SDK de producto
+- `business_metric|kpi_|revenue_`     # naming convención de negocio
+**Señal de N/A:** no hay backend / lógica de negocio en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] Signups, logins, conversions, churn.
 - [ ] Volumen por operación crítica (pagos, uploads, análisis).
@@ -156,6 +237,15 @@ Además de métricas técnicas, se miden eventos clave del negocio.
 
 Los labels/tags de las métricas no explotan en cardinalidad (explota costo y
 rompe store).
+
+**Dónde buscar:** `**/instrumentation/**`, `**/*.{ts,js,py,go,java}`
+**Patrones:**
+- `labels:\s*\[[^\]]*user[_-]?id`     # user_id como label (anti-patrón)
+- `labels:\s*\[[^\]]*request[_-]?id`     # request_id como label
+- `labels:\s*\[[^\]]*uuid|email|session`     # alta cardinalidad
+- `\.inc\([^)]*req\.url\)`     # URL cruda como label
+- `normalizePath|routePattern|/users/:id`     # normalización (señal positiva)
+**Señal de N/A:** no se exportan métricas en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] No se usan user_id, request_id, UUIDs como label.
@@ -175,6 +265,11 @@ rompe store).
 
 Cada servicio/endpoint crítico tiene un SLO de disponibilidad y latencia.
 
+**Dónde buscar:** `**/slo*`, `**/sli*`, `**/*.{yaml,yml,md}`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / proceso)*
+**Señal de N/A:** no hay backend / servicios productivos en el repo o stack_signal.has_backend == false
+
 **Verificar:**
 - [ ] SLO escrito: ej "99.9% de requests en < 500 ms" medido sobre ventana de 30d.
 - [ ] Error budget calculado (1 - SLO).
@@ -188,6 +283,15 @@ Cada servicio/endpoint crítico tiene un SLO de disponibilidad y latencia.
 
 Las alertas se disparan cuando el budget se consume demasiado rápido, no con
 cada tick anómalo.
+
+**Dónde buscar:** `**/alerts*.{yaml,yml,json}`, `**/*.alert.{yml,yaml}`, `**/prometheus/**`, `**/monitoring/**`
+**Patrones:**
+- `burn_rate|burnRate|burn-rate`     # alerta basada en burn rate
+- `for:\s*\d+[hm]`     # ventanas multi-window de Prometheus
+- `error_budget|errorBudget`     # presupuesto de error referenciado
+- `pagerduty|opsgenie|victorops`     # integración con on-call
+- `runbook_url|runbook:`     # link a runbook en alerta
+**Señal de N/A:** no hay archivos de alertas en el repo o stack_signal.has_backend == false
 
 **Verificar:**
 - [ ] Multi-window burn rate alerts (ej: 2% budget en 1h OR 5% en 6h).

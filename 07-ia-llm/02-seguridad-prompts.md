@@ -16,6 +16,14 @@ La arquitectura del prompt distingue explícitamente entre instrucciones del
 sistema y datos del usuario, para que inyecciones dentro del user input no
 sobrescriban el comportamiento.
 
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `f["']You are an assistant\..*\{user_input\}|system\s*=\s*f["'][^"']*\{`     # input usuario en system prompt
+- `<user_input>[\s\S]*</user_input>|<data>[\s\S]*</data>`     # delimitadores defensivos
+- `ignore.*previous.*instructions|disregard.*above`     # frases típicas de injection (filtros)
+- `role:\s*["']user["']`     # uso del rol user (correcto)
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] User input dentro de etiquetas/delimitadores claros: `<user_input>...</user_input>`.
 - [ ] System prompt instruye al modelo a ignorar instrucciones embebidas en datos.
@@ -33,6 +41,15 @@ sobrescriban el comportamiento.
 
 El output del modelo nunca se usa directamente para ejecutar código, hacer
 llamadas privilegiadas, o mostrar HTML crudo sin sanitización.
+
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py,jsx,tsx}`
+**Patrones:**
+- `\beval\(.*response|exec\(.*response|new\s+Function\(.*completion`     # ejecución del output (peligroso)
+- `dangerouslySetInnerHTML.*\{.*(response|completion|message)`     # HTML crudo del LLM
+- `DOMPurify|bleach\.clean|sanitize-html`     # sanitización aplicada
+- `zod|pydantic|jsonschema.*validate.*response`     # validación de schema
+- `os\.system\(.*response|subprocess.*\(.*completion`     # shell con output del modelo
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] El output se valida contra schema/tipo esperado.
@@ -52,6 +69,15 @@ llamadas privilegiadas, o mostrar HTML crudo sin sanitización.
 Cuando el modelo puede invocar tools (function calls, agents), cada llamada
 pasa por autorización, no se confía en que el modelo respete límites por sí
 mismo.
+
+**Dónde buscar:** `**/agents/**`, `**/tools/**`, `**/llm/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `tools\s*=\s*\[|tool_choice|function_call|@tool|defineTool`     # registro de tools
+- `tool.*allow.?list|tool.*allowed.*for.*user|authorize.*before.*tool`     # allowlist por usuario
+- `human.?in.?the.?loop|require.*confirmation.*tool`     # confirmación humana
+- `await.*executeTool|run_tool\(.*\)`     # ejecución a verificar
+- `audit.*tool.*call|log.*tool.*invocation`     # audit log de tools
+**Señal de N/A:** el LLM no usa tool/function calling (solo respuestas de texto).
 
 **Verificar:**
 - [ ] Cada tool tiene ACL que el servidor aplica antes de ejecutar.
@@ -73,6 +99,14 @@ mismo.
 Solo los datos estrictamente necesarios para la tarea se incluyen en el prompt.
 PII innecesaria se remueve o anonimiza antes.
 
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `prompt.*\$?\{user\}|prompt.*user\.email|prompt.*user\.address`     # PII directo en prompt
+- `redact|scrub|mask.*pii|remove.*pii`     # sanitización pre-prompt
+- `process\.env\..*KEY.*prompt|secret.*prompt`     # secretos en prompt (mal)
+- `JSON\.stringify\(user\)|json\.dumps\(.*user`     # serialización completa de user
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Se sanean logs y prompts para no pasar PII no necesaria.
 - [ ] Para tareas de análisis, se puede considerar anonimizar antes y re-identificar después.
@@ -85,6 +119,13 @@ PII innecesaria se remueve o anonimiza antes.
 
 El contrato con el proveedor (OpenAI, Anthropic, Google, etc.) define qué hace
 con los datos: no entrenamiento, retención, logging, ubicación.
+
+**Dónde buscar:** `DPA*`, `privacy.md`, `**/legal/**`, `package.json`, `requirements.txt`
+**Patrones:**
+- *(sin patrones mecánicos — revisión humana / legal)*
+- `import.*(openai|anthropic|@google/generative-ai|cohere|mistral)`     # proveedores a contrastar con DPAs
+- `zero.?retention|opt.?out.*training|data.*retention.*0`     # opt-out documentado
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] DPA firmado con el proveedor.
@@ -101,6 +142,13 @@ Datos con secreto profesional, datos médicos, financieros críticos: no se
 envían a modelos consumidores (ChatGPT free) sino a tenants empresariales
 con controles.
 
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/*.{ts,js,py}`, `.env*`
+**Patrones:**
+- `api\.openai\.com|api\.anthropic\.com`     # endpoint público (revisar si manejan datos sensibles)
+- `azure.*openai|bedrock|vertex.?ai|on.?prem`     # tenants empresariales/controlados
+- `\b(health|medical|patient|attorney|privileged|tax|nomina)\b.*prompt`     # datos sensibles cerca de LLM
+**Señal de N/A:** el repo no procesa datos sensibles (sin salud, sin financieros críticos, sin secreto profesional).
+
 **Verificar:**
 - [ ] Endpoints internos no llaman a APIs públicas con datos sensibles sin autorización.
 - [ ] Uso de modelos on-prem / bring-your-own-key / Azure OpenAI / Bedrock cuando es exigido.
@@ -112,6 +160,14 @@ con controles.
 **Severidad:** high · **Tags:** `cwe-532` · **Aplica a:** backend
 
 Los logs que capturan prompts/respuestas pasan por una capa de redacción.
+
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/logger*`, `**/middleware/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `console\.log\(.*prompt|logger\.(info|debug)\(.*prompt`     # logueo crudo de prompts
+- `redact|sanitize|scrub.*before.*log|mask.*pii`     # capa de redacción
+- `log.*\.email|log.*\.rut|log.*\.phone`     # PII en logs
+- `truncate.*log|max.*log.*length`     # acotar payload
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] PII redactada antes de loggear (emails, teléfonos, nombres sensibles, IDs).
@@ -129,6 +185,13 @@ Se aplican clasificadores / moderation APIs para detectar contenido
 inapropiado (ilegal, autolesiones, explícito) en entrada y salida cuando el
 riesgo lo justifica.
 
+**Dónde buscar:** `**/llm/**`, `**/ai/**`, `**/moderation/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `moderation|moderations\.create|safety.*classifier|perspective.*api`     # APIs de moderación
+- `categories\s*:\s*\{|flagged|unsafe.*content`     # estructura de respuesta de moderación
+- `block.*content|reject.*input|warn.*user`     # acciones definidas
+**Señal de N/A:** el dominio del LLM es cerrado y no acepta input libre del usuario (no hay riesgo razonable de contenido inapropiado).
+
 **Verificar:**
 - [ ] API de moderación (Anthropic, OpenAI Moderation, etc.) integrada en caminos de riesgo.
 - [ ] Umbrales y acciones definidas (bloquear, advertir, notificar).
@@ -141,6 +204,14 @@ riesgo lo justifica.
 
 Rate limiting específico a endpoints que invocan LLM; límites de tokens por
 usuario por periodo; watchdog de gastos.
+
+**Dónde buscar:** `**/llm/**`, `**/middleware/**`, `**/rate*`, `**/*.{ts,js,py}`
+**Patrones:**
+- `rate.?limit|throttle|@Throttle|express-rate-limit|slowapi`     # rate limit
+- `quota|budget|max_tokens_per_(day|month|user)`     # cuotas
+- `usage\.total_tokens|track.*tokens.*per.*user`     # tracking por usuario
+- `feature.?flag|kill.?switch.*ai`     # capability flag
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] Rate limit más estricto en rutas con LLM (no heredar el general).
@@ -159,6 +230,14 @@ usuario por periodo; watchdog de gastos.
 Hay heurísticas o clasificadores que detectan intentos de prompt injection
 (aún imperfectos) y registran para análisis.
 
+**Dónde buscar:** `**/llm/**`, `**/security/**`, `**/middleware/**`, `**/*.{ts,js,py}`
+**Patrones:**
+- `ignore.*previous|disregard.*instructions|jailbreak.*pattern`     # patrones conocidos
+- `prompt.?injection.*detect|injection.*classifier|guardrails`     # clasificador
+- `lakera|rebuff|nvidia.*nemo.*guardrails`     # libs especializadas
+- `log.*suspicious.*prompt`     # logging de intentos
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
+
 **Verificar:**
 - [ ] Lista de patrones conocidos ("ignore previous", "disregard", etc.) como señal.
 - [ ] Logging de intentos sospechosos para análisis y mejora.
@@ -172,6 +251,13 @@ Hay heurísticas o clasificadores que detectan intentos de prompt injection
 **Severidad:** medium · **Tags:** `transparency` · **Aplica a:** frontend
 
 Cuando un output es generado por IA, se identifica claramente al usuario.
+
+**Dónde buscar:** `**/components/**`, `**/*.{tsx,jsx,vue,svelte}`, `**/llm/**`
+**Patrones:**
+- `generated.?by.?ai|ai.?generated|powered.?by.?(gpt|claude|llm)`     # disclaimer
+- `<Badge.*ai|<Tag.*ai|aria-label.*ai.*generated`     # etiqueta visible
+- `disclaimer|caveat|verify.*output`     # texto de limitaciones
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] Etiqueta visible cerca del contenido generado.
@@ -188,6 +274,14 @@ requieren confirmación/revisión humana.
 
 (Ver `DATA-RIGHTS-050`.)
 
+**Dónde buscar:** `**/llm/**`, `**/agents/**`, `**/workflow/**`, `**/*.{ts,js,py,jsx,tsx}`
+**Patrones:**
+- `human.?in.?the.?loop|require.*review|pending.*approval`     # HITL
+- `auto.*approve|auto.*execute|auto.*decision`     # decisiones sin revisión (revisar)
+- `approve|reject|reviewer.*id`     # flujo de aprobación
+- `audit.*log.*approval|signed.*by.*reviewer`     # audit log
+**Señal de N/A:** el LLM solo produce contenido informativo (sin decisiones con efecto legal/financiero).
+
 **Verificar:**
 - [ ] Las decisiones críticas no se ejecutan solo con output del modelo.
 - [ ] Hay UI para revisar/aprobar.
@@ -200,6 +294,14 @@ requieren confirmación/revisión humana.
 
 Asumir que el system prompt **se filtrará**. No poner secretos, datos sensibles
 ni lógica de seguridad que el usuario no pueda ver.
+
+**Dónde buscar:** `**/prompts/**`, `**/llm/**`, `**/ai/**`
+**Patrones:**
+- `sk-[a-zA-Z0-9]{20,}|api_?key\s*[:=]\s*["'][^"']+["']`     # secretos en prompt
+- `internal.*url|http://[a-z0-9.-]+\.internal|admin.*endpoint`     # URLs internas
+- `if.*role.*admin.*then|access.*based.*on.*prompt`     # control de acceso desde prompt (mal)
+- `system\s*[:=].*\b(password|token|secret)\b`     # credenciales en system prompt
+**Señal de N/A:** ningún import de `openai|anthropic|@langchain|@google/generative-ai|cohere|replicate|mistral|together-ai|huggingface`.
 
 **Verificar:**
 - [ ] No hay API keys, secretos, URLs internas en el system prompt.
