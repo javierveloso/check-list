@@ -16,7 +16,7 @@
 
 version: "2.1.0"
 schema_version: 1
-last_updated: "2026-05-03"
+last_updated: "2026-05-06"
 
 # Changelog 2.1.0:
 #   - Añadidos campos opcionales en cada control (en .md, no en este índice):
@@ -815,3 +815,54 @@ controls:
   - { id: DOC-COMP-003, title: "Threat model actualizado",                                 severity: medium,   applies_to: [security, documentation], tags: [security],                 file: 14-documentacion/02-adrs-operacional.md }
   - { id: DOC-DATA-001, title: "Data dictionary / catálogo",                               severity: medium,   applies_to: [data, documentation], tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
   - { id: DOC-DATA-002, title: "Pipelines y transformaciones documentadas",                severity: medium,   applies_to: [data],                tags: [],                            file: 14-documentacion/02-adrs-operacional.md }
+
+  # ========================================================================
+  # 01+. SEGURIDAD · Supply Chain
+  # ========================================================================
+  - { id: SEC-SUPPLY-001, title: "SBOM generado y versionado con el artefacto",               severity: high,     applies_to: [backend, frontend, infra], tags: [supply-chain, slsa],        file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-002, title: "Artefactos firmados digitalmente (cosign/sigstore)",         severity: high,     applies_to: [ci-cd, infra],            tags: [supply-chain, slsa],        file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-003, title: "Imágenes base verificadas por digest, no por tag",           severity: critical, applies_to: [infra, ci-cd],            tags: [supply-chain, container],   file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-004, title: "Pipeline de CI protegido contra script injection",           severity: critical, applies_to: [ci-cd],                   tags: [supply-chain, cwe-78],      file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-005, title: "Actions/scripts de CI fijados a commit hash",                severity: high,     applies_to: [ci-cd],                   tags: [supply-chain],              file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-006, title: "Revisión humana de PRs que modifican dependencias",          severity: medium,   applies_to: [process, ci-cd],          tags: [supply-chain],              file: 01-seguridad/07-supply-chain.md }
+  - { id: SEC-SUPPLY-007, title: "Provenance SLSA nivel 2 o superior",                        severity: medium,   applies_to: [ci-cd, infra],            tags: [supply-chain, slsa],        file: 01-seguridad/07-supply-chain.md }
+
+  # ========================================================================
+  # 01+. SEGURIDAD · Hardening de contenedores
+  # ========================================================================
+  - { id: SEC-CONTAINER-001, title: "Contenedores sin root (USER no-root en Dockerfile)",     severity: high,     applies_to: [infra, ci-cd],            tags: [container, cwe-250],        file: 01-seguridad/08-containers.md }
+  - { id: SEC-CONTAINER-002, title: "Filesystem de contenedor read-only donde aplique",        severity: medium,   applies_to: [infra],                   tags: [container],                 file: 01-seguridad/08-containers.md }
+  - { id: SEC-CONTAINER-003, title: "Resource limits (CPU/memory) definidos en todo pod",      severity: high,     applies_to: [infra],                   tags: [container, dos, cwe-400],   file: 01-seguridad/08-containers.md }
+  - { id: SEC-CONTAINER-004, title: "Network policies restrictivas en Kubernetes",             severity: high,     applies_to: [infra],                   tags: [container, k8s],            file: 01-seguridad/08-containers.md }
+  - { id: SEC-CONTAINER-005, title: "Imágenes base mínimas (distroless/alpine) y actualizadas", severity: high,   applies_to: [infra, ci-cd],            tags: [container, supply-chain],   file: 01-seguridad/08-containers.md }
+  - { id: SEC-CONTAINER-006, title: "Secretos montados como volumes o secrets manager, no env vars", severity: high, applies_to: [infra],                 tags: [container, cwe-798],        file: 01-seguridad/08-containers.md }
+
+  # ========================================================================
+  # 02+. API REST · Protocolos en tiempo real (WebSocket / SSE / gRPC)
+  # ========================================================================
+  - { id: API-RT-001, title: "Autenticación en el handshake WebSocket/SSE",                   severity: critical, applies_to: [backend],                 tags: [websocket, security],       file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-002, title: "Autorización evaluada por canal o evento, no solo en conexión",  severity: high,     applies_to: [backend],                 tags: [websocket, security],       file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-003, title: "Rate limiting por conexión y por usuario",                       severity: high,     applies_to: [backend],                 tags: [websocket, dos, cwe-770],   file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-004, title: "Reconexión con backoff exponencial y jitter",                    severity: medium,   applies_to: [frontend, backend],       tags: [websocket, resilience],     file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-005, title: "Heartbeat/ping-pong con timeout de desconexión",                 severity: medium,   applies_to: [backend],                 tags: [websocket],                 file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-006, title: "Límite de conexiones simultáneas por usuario/IP",                severity: high,     applies_to: [backend, infra],          tags: [websocket, dos],            file: 02-api-diseno/07-realtime.md }
+  - { id: API-RT-007, title: "Schemas de mensajes validados en entrada y salida",              severity: high,     applies_to: [backend],                 tags: [websocket, validation],     file: 02-api-diseno/07-realtime.md }
+
+  # ========================================================================
+  # 06+. PROTECCIÓN DE DATOS · Analytics y rastreo respetuoso
+  # ========================================================================
+  - { id: DATA-ANALYTICS-001, title: "IPs anonimizadas en configuración de SDKs de analytics", severity: high,    applies_to: [frontend, backend],       tags: [gdpr, privacy, analytics],  file: 06-proteccion-datos/07-analytics-privacidad.md }
+  - { id: DATA-ANALYTICS-002, title: "SDKs de tracking cargados solo tras consentimiento",     severity: critical, applies_to: [frontend],                tags: [gdpr, consent, tracking],   file: 06-proteccion-datos/07-analytics-privacidad.md }
+  - { id: DATA-ANALYTICS-003, title: "Sin PII en eventos de analytics",                        severity: critical, applies_to: [frontend, backend],       tags: [gdpr, pii, analytics],      file: 06-proteccion-datos/07-analytics-privacidad.md }
+  - { id: DATA-ANALYTICS-004, title: "Pixels y beacons de terceros bajo consentimiento",       severity: high,     applies_to: [frontend],                tags: [gdpr, consent, tracking],   file: 06-proteccion-datos/07-analytics-privacidad.md }
+  - { id: DATA-ANALYTICS-005, title: "Inventario de terceros con acceso a datos de usuario",   severity: medium,   applies_to: [frontend, documentation], tags: [gdpr, supply-chain, ropa],  file: 06-proteccion-datos/07-analytics-privacidad.md }
+
+  # ========================================================================
+  # 08+. USABILIDAD · Internacionalización y localización (i18n / l10n)
+  # ========================================================================
+  - { id: UX-I18N-001, title: "Strings de UI externalizados, sin literales hardcoded",         severity: high,     applies_to: [frontend, backend],       tags: [i18n],                      file: 08-usabilidad-ux/02-i18n.md }
+  - { id: UX-I18N-002, title: "Fechas, números y monedas formateados con locale",              severity: medium,   applies_to: [frontend, backend],       tags: [i18n, l10n],                file: 08-usabilidad-ux/02-i18n.md }
+  - { id: UX-I18N-003, title: "Soporte RTL evaluado y probado",                                severity: medium,   applies_to: [frontend],                tags: [i18n, l10n, rtl],           file: 08-usabilidad-ux/02-i18n.md }
+  - { id: UX-I18N-004, title: "Pluralización correcta por locale (no concatenación de strings)", severity: medium, applies_to: [frontend, backend],       tags: [i18n],                      file: 08-usabilidad-ux/02-i18n.md }
+  - { id: UX-I18N-005, title: "Mensajes sin concatenación de strings traducidos",              severity: high,     applies_to: [frontend, backend],       tags: [i18n],                      file: 08-usabilidad-ux/02-i18n.md }
+  - { id: UX-I18N-006, title: "Encoding UTF-8 en toda la pila (DB, API, UI)",                  severity: high,     applies_to: [backend, data, frontend], tags: [i18n, encoding],            file: 08-usabilidad-ux/02-i18n.md }
