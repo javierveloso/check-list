@@ -140,6 +140,58 @@ Ambos viven junto al `findings.json` en la carpeta de reporte que el usuario ind
 
 ---
 
+## 2.5. Contexto de entorno y exclusiones locales
+
+El agente opera en uno de dos contextos declarados por el usuario al inicio del run:
+
+| Contexto | Cuándo usarlo |
+|---|---|
+| `local` | Revisión en máquina de desarrollo. Archivos `.env` son esperados y gestionados manualmente. |
+| `ci_prod` | Pipeline CI, staging, pre-release o auditoría formal. Strictez máxima. |
+
+Registra el contexto en `findings.json` → `metadata.context`.
+
+### Exclusiones automáticas en `context: local`
+
+Los siguientes patrones se tratan como `verdict: na` para controles cuyo único criterio
+de fallo es **la presencia de credenciales reales en el archivo** (p.ej. SEC-CRYPTO-001):
+
+```
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production.local   ← solo si context:local; en ci_prod sigue siendo crítico
+```
+
+**Checks que NUNCA se omiten aunque `context: local`:**
+
+| Check | Razón |
+|---|---|
+| `.env` ausente de `.gitignore` | Sin esto, un `git add .` lo expone al repo. |
+| `.env` presente en git history (`git log --all -- "*.env"`) | El daño ya ocurrió — las credenciales están en el historial público. |
+| Secrets hardcodeados en archivos de código fuente (`*.ts`, `*.js`, `*.py`…) | Estos archivos se commitean; no son archivos de entorno. |
+| Secrets hardcodeados en archivos de test (`*.test.*`, `*.spec.*`, `*.contract.*`) | Los tests se commitean — alto riesgo de exposición en CI/CD. |
+
+### Cómo registrar exclusiones locales en findings.json
+
+En `metadata`:
+```json
+"context": "local",
+"local_exclusions_applied": [".env", ".env.local"]
+```
+
+En cada finding marcado `na` por exclusión local:
+```json
+{
+  "verdict": "na",
+  "na_reason": "context:local — archivo .env con credenciales es esperado en desarrollo local. Verificado: archivo está en .gitignore y no aparece en git history."
+}
+```
+
+---
+
 ## 3. Árbol de decisión por control
 
 Para cada control, el veredicto es uno de cuatro:
